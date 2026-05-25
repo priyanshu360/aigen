@@ -31,6 +31,8 @@ export interface AigenPluginOptions {
   configFile?: string
   noCache?: boolean
   ciMode?: boolean
+  agentDir?: string
+  model?: string
 }
 
 export interface GenerationProvider {

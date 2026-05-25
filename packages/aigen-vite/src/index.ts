@@ -2,14 +2,24 @@ import type { Plugin, ResolvedConfig } from "vite"
 import {
   resolveConfig,
   runPipeline,
-  MockGenerationProvider,
+  GitAgentProvider,
   type AgentConfig,
   type AigenPluginOptions,
 } from "@aigen/core"
 
 export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
+  if (!options.agentDir) {
+    throw new Error(
+      "[AgentGen] The `agentDir` option is required. Point it to your aigen-agent repo."
+    )
+  }
+
   let resolvedConfig: ResolvedConfig
   let agentConfig: AgentConfig
+  const provider = new GitAgentProvider({
+    agentDir: options.agentDir,
+    model: options.model,
+  })
 
   return {
     name: "@aigen/vite",
@@ -23,15 +33,7 @@ export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
       const root = resolvedConfig.root
       const sources = await collectSourceFiles(root)
 
-      const provider = new MockGenerationProvider()
-
-      await runPipeline(
-        agentConfig,
-        sources,
-        provider,
-        root,
-        options.noCache
-      )
+      await runPipeline(agentConfig, sources, provider, root, options.noCache)
     },
   }
 }

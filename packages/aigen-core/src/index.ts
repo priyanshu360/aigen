@@ -10,7 +10,8 @@ export { computeHash, getCachedImplementation, setCachedImplementation, clearCac
 export { repairImplementation } from "./repair"
 export type { RepairResult } from "./repair"
 export { runPipeline } from "./pipeline"
-export { MockGenerationProvider } from "./provider"
+export { GitAgentProvider } from "./gitagent-provider"
+export type { GitAgentProviderOptions } from "./gitagent-provider"
 export { resolveConfig, defineConfig } from "./config"
 export type {
   CallSite,

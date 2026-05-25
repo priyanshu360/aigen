@@ -3,12 +3,20 @@ import { aigenPlugin } from "../index"
 
 describe("@aigen/esbuild", () => {
   it("returns a plugin object with name", () => {
-    const plugin = aigenPlugin()
+    const plugin = aigenPlugin({ agentDir: "/tmp/test-agent" })
     expect(plugin.name).toBe("@aigen/esbuild")
   })
 
-  it("accepts options", () => {
-    const plugin = aigenPlugin({ noCache: true })
+  it("throws when agentDir is missing", () => {
+    expect(() => aigenPlugin()).toThrow("agentDir")
+  })
+
+  it("accepts options with model", () => {
+    const plugin = aigenPlugin({
+      agentDir: "/tmp/test-agent",
+      model: "anthropic:claude-sonnet-4",
+      noCache: true,
+    })
     expect(plugin).toBeDefined()
   })
 })

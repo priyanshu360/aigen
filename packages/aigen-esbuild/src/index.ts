@@ -2,32 +2,33 @@ import type { Plugin } from "esbuild"
 import {
   resolveConfig,
   runPipeline,
-  MockGenerationProvider,
-  type AgentConfig,
+  GitAgentProvider,
   type AigenPluginOptions,
 } from "@aigen/core"
 
 export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
-  let agentConfig: AgentConfig
+  if (!options.agentDir) {
+    throw new Error(
+      "[AgentGen] The `agentDir` option is required. Point it to your aigen-agent repo."
+    )
+  }
+
+  const agentConfig = resolveConfig(options)
+  const provider = new GitAgentProvider({
+    agentDir: options.agentDir,
+    model: options.model,
+  })
 
   return {
     name: "@aigen/esbuild",
 
     setup(build) {
       const root = build.initialOptions.absWorkingDir ?? process.cwd()
-      agentConfig = resolveConfig(options)
 
       build.onStart(async () => {
         const sources = await collectSourceFiles(root)
-        const provider = new MockGenerationProvider()
 
-        await runPipeline(
-          agentConfig,
-          sources,
-          provider,
-          root,
-          options.noCache
-        )
+        await runPipeline(agentConfig, sources, provider, root, options.noCache)
       })
     },
   }
