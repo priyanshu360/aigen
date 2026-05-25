@@ -24,13 +24,11 @@ export interface AgentConfig {
   cache: boolean
   generatedFile: string
   ambiguityBlocklist: string[]
-  ciMode: boolean
 }
 
 export interface AigenPluginOptions {
   configFile?: string
   noCache?: boolean
-  ciMode?: boolean
   agentDir?: string
   model?: string
 }

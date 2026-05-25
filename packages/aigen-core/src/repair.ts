@@ -1,3 +1,7 @@
+import { execSync } from "node:child_process"
+import { writeFileSync, mkdtempSync, rmSync } from "node:fs"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
 import type { GenerationProvider } from "./types"
 
 export interface RepairResult {
@@ -33,8 +37,8 @@ export async function repairImplementation(
       }
     }
 
-    const compileOk = await checkCompilation(result.code)
-    if (compileOk) {
+    const check = checkTypeScript(result.code)
+    if (check === true) {
       return {
         success: true,
         implementation: result.code,
@@ -43,7 +47,7 @@ export async function repairImplementation(
     }
 
     current = result.code
-    lastError = compileOk
+    lastError = check
   }
 
   return {
@@ -54,6 +58,30 @@ export async function repairImplementation(
   }
 }
 
-async function checkCompilation(_code: string): Promise<string | true> {
-  return true
+function checkTypeScript(code: string): string | true {
+  const dir = mkdtempSync(join(tmpdir(), "aigen-tsc-"))
+  const file = join(dir, "test.ts")
+
+  try {
+    writeFileSync(file, code, "utf-8")
+
+    try {
+      execSync("npx tsc --noEmit --strict --target es2022 --module esnext test.ts", {
+        cwd: dir,
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 10000,
+      })
+      return true
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      const cleaned = msg
+        .split("\n")
+        .filter((l) => l.includes("error TS") || l.includes("error:"))
+        .join("\n")
+        .trim()
+      return cleaned || "Unknown compilation error"
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 }

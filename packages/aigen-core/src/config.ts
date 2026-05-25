@@ -8,7 +8,6 @@ const DEFAULT_CONFIG: AgentConfig = {
   cache: true,
   generatedFile: "src/agent.generated.ts",
   ambiguityBlocklist: [],
-  ciMode: false,
 }
 
 export function resolveConfig(options?: AigenPluginOptions): AgentConfig {
@@ -26,11 +25,6 @@ export function resolveConfig(options?: AigenPluginOptions): AgentConfig {
   }
 
   if (options?.noCache !== undefined) config.cache = !options.noCache
-  if (options?.ciMode !== undefined) config.ciMode = options.ciMode
-
-  if (process.env.CI === "true") {
-    config.ciMode = true
-  }
 
   return config
 }
@@ -39,7 +33,7 @@ export function defineConfig(config: Partial<AgentConfig>): AgentConfig {
   return { ...DEFAULT_CONFIG, ...config }
 }
 
-function loadConfigFile(_path: string): Partial<AgentConfig> | null {
+function loadConfigFile(_filePath: string): Partial<AgentConfig> | null {
   try {
     return null
   } catch {

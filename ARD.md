@@ -528,32 +528,13 @@ export default defineConfig({
   // Blocklist of ambiguous single-token names (appended to built-in list)
   ambiguityBlocklist: [],
 
-  // CI mode: skip generation if generatedFile already exists
-  // Set to true in CI to treat committed generated file as source of truth
-  ciMode: process.env.CI === "true",
+
 })
 ```
 
 ---
 
-## 17. CI Behaviour
-
-In CI (`ciMode: true` or `CI=true`):
-
-- If `agent.generated.ts` exists in the repo, skip all generation and use it as-is
-- TypeScript compilation still runs against the committed file
-- If `agent.generated.ts` is missing, CI fails with:
-
-```
-[AgentGen] ERROR: agent.generated.ts not found and ciMode is enabled.
-Commit the generated file before pushing, or disable ciMode.
-```
-
-This ensures CI builds are fast, deterministic, and never call the LLM.
-
----
-
-## 18. Success Metrics
+## 17. Success Metrics
 
 ### Developer Productivity
 - Reduction in time spent writing helper functions (measured via surveys)
@@ -569,7 +550,7 @@ This ensures CI builds are fast, deterministic, and never call the LLM.
 
 ---
 
-## 19. Resolved Design Decisions
+## 18. Resolved Design Decisions
 
 | Question | Decision | Rationale |
 |---|---|---|
@@ -582,11 +563,9 @@ This ensures CI builds are fast, deterministic, and never call the LLM.
 | Ambiguity detection | Blocklist of generic single-verb names + two-token minimum rule | Precise enough to enforce without false positives |
 | Signature conflicts | Build error — developer must resolve | Guessing the "right" signature silently would produce wrong code |
 | Caching | SHA-256 hash of name + arg types + hint | Avoids redundant LLM calls; `--no-cache` escape hatch |
-| CI behaviour | Skip generation if file committed | LLM calls in CI are slow, expensive, and non-deterministic |
-
 ---
 
-## 20. Open Questions (V2 Scope)
+## 19. Open Questions (V2 Scope)
 
 - **Multi-file generated output** — split `agent.generated.ts` by domain when function count exceeds ~20
 - **Watch mode** — regenerate incrementally on file save during `npm run dev`

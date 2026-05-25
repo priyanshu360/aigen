@@ -14,12 +14,10 @@ describe("defineConfig", () => {
     const config = defineConfig({
       maxRepairAttempts: 5,
       cache: false,
-      ciMode: true,
-      generatordFile: "src/custom.ts",
+      generatedFile: "src/custom.ts",
     })
     expect(config.maxRepairAttempts).toBe(5)
     expect(config.cache).toBe(false)
-    expect(config.ciMode).toBe(true)
   })
 })
 
@@ -28,16 +26,10 @@ describe("resolveConfig", () => {
     const config = resolveConfig()
     expect(config.maxRepairAttempts).toBe(3)
     expect(config.cache).toBe(true)
-    expect(config.ciMode).toBe(false)
   })
 
   it("applies noCache option", () => {
     const config = resolveConfig({ noCache: true })
     expect(config.cache).toBe(false)
-  })
-
-  it("applies ciMode option", () => {
-    const config = resolveConfig({ ciMode: true })
-    expect(config.ciMode).toBe(true)
   })
 })

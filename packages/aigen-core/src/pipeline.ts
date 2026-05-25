@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync, mkdirSync } from "node:fs"
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { scanSourceFiles } from "./scanner"
 import { collectAllContexts } from "./context"
@@ -9,6 +9,7 @@ import { repairImplementation } from "./repair"
 import type { AgentConfig, GenerationProvider } from "./types"
 
 const NAMESPACE = "[AgentGen]"
+const LOCK_MARKER = "@aigen-lock"
 
 export async function runPipeline(
   config: AgentConfig,
@@ -55,11 +56,23 @@ export async function runPipeline(
     process.exit(1)
   }
 
+  const lockedFunctions = readLockedFunctions(rootDir, config.generatedFile)
+  if (lockedFunctions.size > 0) {
+    console.log(`${NAMESPACE} Skipping ${lockedFunctions.size} locked function(s)`)
+  }
+
   const contexts = collectAllContexts(calls)
 
   const generatedFunctions: string[] = []
+  const seen = new Set<string>()
 
   for (const ctx of contexts) {
+    if (lockedFunctions.has(ctx.functionName)) {
+      generatedFunctions.push(lockedFunctions.get(ctx.functionName)!)
+      seen.add(ctx.functionName)
+      continue
+    }
+
     const hintTypes = ctx.hint
       ? ctx.args.slice(0, -1).map((a) => a.type).join(",")
       : ctx.args.map((a) => a.type).join(",")
@@ -69,6 +82,7 @@ export async function runPipeline(
       const cached = getCachedImplementation(rootDir, hash)
       if (cached) {
         generatedFunctions.push(cached)
+        seen.add(ctx.functionName)
         continue
       }
     }
@@ -103,10 +117,53 @@ export async function runPipeline(
     }
 
     generatedFunctions.push(compileResult.implementation)
+    seen.add(ctx.functionName)
+  }
+
+  for (const [name, code] of lockedFunctions) {
+    if (!seen.has(name)) {
+      generatedFunctions.push(code)
+    }
   }
 
   writeGeneratedFile(rootDir, config.generatedFile, generatedFunctions)
   console.log(`${NAMESPACE} Generated ${generatedFunctions.length} function(s) in ${config.generatedFile}`)
+}
+
+function readLockedFunctions(
+  rootDir: string,
+  relativePath: string
+): Map<string, string> {
+  const fullPath = join(rootDir, relativePath)
+  if (!existsSync(fullPath)) return new Map()
+
+  const text = readFileSync(fullPath, "utf-8")
+  const locked = new Map<string, string>()
+
+  const funcRegex = /^(?:\/\/\s*@aigen-lock\s*\n+)?export\s+function\s+(\w+)/gm
+  let match: RegExpExecArray | null
+  const funcStarts: { name: string; index: number; locked: boolean }[] = []
+
+  while ((match = funcRegex.exec(text)) !== null) {
+    const pos = match.index
+    const preceding = text.slice(Math.max(0, pos - 50), pos)
+    funcStarts.push({
+      name: match[1],
+      index: pos,
+      locked: preceding.includes(LOCK_MARKER),
+    })
+  }
+
+  for (let i = 0; i < funcStarts.length; i++) {
+    if (!funcStarts[i].locked) continue
+    const start = funcStarts[i].index
+    const end = i + 1 < funcStarts.length
+      ? funcStarts[i + 1].index
+      : text.length
+    locked.set(funcStarts[i].name, text.slice(start, end).trim())
+  }
+
+  return locked
 }
 
 function writeGeneratedFile(
