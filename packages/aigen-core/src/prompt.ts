@@ -31,6 +31,10 @@ export function buildPrompt(context: FunctionContext): string {
     sections.push(`\nNearby code:\n\`\`\`typescript\n${context.nearbyCode}\n\`\`\``)
   }
 
+  if (context.availableImports.length > 0) {
+    sections.push(`\nAvailable imports in the source file:\n${context.availableImports.join("\n")}`)
+  }
+
   sections.push("\nGenerate only the function implementation (a single exported TypeScript function).")
   sections.push("Use standard TypeScript syntax. Do not include any explanation.")
 
