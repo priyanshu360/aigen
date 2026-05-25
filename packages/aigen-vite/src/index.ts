@@ -1,9 +1,8 @@
-import type { Plugin, ResolvedConfig } from "vite"
+import type { Plugin } from "vite"
 import {
   resolveConfig,
   runPipeline,
   GitAgentProvider,
-  type AgentConfig,
   type AigenPluginOptions,
 } from "@aigen/core"
 
@@ -14,8 +13,6 @@ export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
     )
   }
 
-  let resolvedConfig: ResolvedConfig
-  let agentConfig: AgentConfig
   const provider = new GitAgentProvider({
     agentDir: options.agentDir,
     model: options.model,
@@ -24,13 +21,9 @@ export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
   return {
     name: "@aigen/vite",
 
-    configResolved(config) {
-      resolvedConfig = config
-      agentConfig = resolveConfig(options)
-    },
-
     async buildStart() {
-      const root = resolvedConfig.root
+      const agentConfig = await resolveConfig(options)
+      const root = process.cwd()
       const sources = await collectSourceFiles(root)
 
       await runPipeline(agentConfig, sources, provider, root, options.noCache)

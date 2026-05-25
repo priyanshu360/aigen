@@ -22,14 +22,14 @@ describe("defineConfig", () => {
 })
 
 describe("resolveConfig", () => {
-  it("returns defaults when no options are provided", () => {
-    const config = resolveConfig()
+  it("returns defaults when no options are provided", async () => {
+    const config = await resolveConfig()
     expect(config.maxRepairAttempts).toBe(3)
     expect(config.cache).toBe(true)
   })
 
-  it("applies noCache option", () => {
-    const config = resolveConfig({ noCache: true })
+  it("applies noCache option", async () => {
+    const config = await resolveConfig({ noCache: true })
     expect(config.cache).toBe(false)
   })
 })

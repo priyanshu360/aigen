@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
+import { pathToFileURL } from "node:url"
 import type { AgentConfig, AigenPluginOptions } from "./types"
 
 const DEFAULT_CONFIG: AgentConfig = {
@@ -10,16 +11,16 @@ const DEFAULT_CONFIG: AgentConfig = {
   ambiguityBlocklist: [],
 }
 
-export function resolveConfig(options?: AigenPluginOptions): AgentConfig {
+export async function resolveConfig(options?: AigenPluginOptions): Promise<AgentConfig> {
   let config: AgentConfig = { ...DEFAULT_CONFIG }
 
   if (options?.configFile) {
-    const fileConfig = loadConfigFile(options.configFile)
+    const fileConfig = await loadConfigFile(options.configFile)
     if (fileConfig) config = { ...config, ...fileConfig }
   } else {
     const defaultConfigPath = join(process.cwd(), "aigen.config.ts")
     if (existsSync(defaultConfigPath)) {
-      const fileConfig = loadConfigFile(defaultConfigPath)
+      const fileConfig = await loadConfigFile(defaultConfigPath)
       if (fileConfig) config = { ...config, ...fileConfig }
     }
   }
@@ -33,9 +34,11 @@ export function defineConfig(config: Partial<AgentConfig>): AgentConfig {
   return { ...DEFAULT_CONFIG, ...config }
 }
 
-function loadConfigFile(_filePath: string): Partial<AgentConfig> | null {
+async function loadConfigFile(filePath: string): Promise<Partial<AgentConfig> | null> {
   try {
-    return null
+    const url = pathToFileURL(filePath).href
+    const mod = await import(url)
+    return mod.default || null
   } catch {
     return null
   }

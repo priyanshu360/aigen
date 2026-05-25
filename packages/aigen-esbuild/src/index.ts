@@ -13,7 +13,6 @@ export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
     )
   }
 
-  const agentConfig = resolveConfig(options)
   const provider = new GitAgentProvider({
     agentDir: options.agentDir,
     model: options.model,
@@ -22,8 +21,9 @@ export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
   return {
     name: "@aigen/esbuild",
 
-    setup(build) {
+    async setup(build) {
       const root = build.initialOptions.absWorkingDir ?? process.cwd()
+      const agentConfig = await resolveConfig(options)
 
       build.onStart(async () => {
         const sources = await collectSourceFiles(root)

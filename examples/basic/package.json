@@ -1,0 +1,17 @@
+{
+  "name": "@aigen/example-basic",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@aigen/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@aigen/vite": "workspace:*",
+    "vite": "^6"
+  }
+}
