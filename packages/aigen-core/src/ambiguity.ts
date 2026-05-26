@@ -29,24 +29,5 @@ export function checkAmbiguity(
     }
   }
 
-  const tokens = name.split("_")
-  if (tokens.length < 2) {
-    return {
-      functionName: name,
-      message: `Function name '${name}' is too ambiguous. Use a descriptive name with at least two parts (e.g. '${name}_user_data').`,
-    }
-  }
-
-  if (tokens.length === 2 && blocklist.includes(tokens[0])) {
-    return {
-      functionName: name,
-      message: `Function name '${name}' is too ambiguous. Combine '${tokens[0]}' with a more specific subject (e.g. '${tokens[0]}_sorted_${tokens[1]}').`,
-      suggestions: [
-        `${tokens[0]}_sorted_${tokens[1]}(data)`,
-        `${tokens[0]}_filtered_${tokens[1]}(data)`,
-      ],
-    }
-  }
-
   return null
 }
