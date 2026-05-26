@@ -51,15 +51,21 @@ Run `npm run build`. The first build generates and compiles all functions.
 
 ## Hints
 
-Append a string literal as the last argument to steer generation:
+Pass an options object as the last argument to steer generation:
 
 ```ts
-aigen.extract_emails_from_text(body, "Return unique emails only, lowercase")
+aigen.extract_emails_from_text(body, { hint: "Return unique emails only, lowercase" })
 ```
 
-## Locking Generated Functions
+## Skipping Existing Functions
 
-Add `// @aigen-lock` above a function in `src/agent.generated.ts` to prevent future builds from overwriting it.
+If a function already exists in `src/agent.generated.ts`, Aigen skips it with a message:
+
+```
+[AgentGen] Skipping 'extract_emails_from_text' — already exists at src/agent.generated.ts:12
+```
+
+Delete the function from the generated file and re-run the build to regenerate it.
 
 ## Caching
 

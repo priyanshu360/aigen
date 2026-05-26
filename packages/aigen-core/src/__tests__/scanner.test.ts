@@ -50,15 +50,42 @@ const domain = aigen.get_domain_from_email(email)
     expect(result.calls).toHaveLength(2)
   })
 
-  it("extracts hint from last string literal argument", () => {
+  it("extracts hint from options object with hint key", () => {
     const file = writeSource(dir, "test.ts", `
 import { aigen } from "@aigen/runtime"
 
-const emails = aigen.extract_emails_from_text(body, "Return unique emails")
+const emails = aigen.extract_emails_from_text(body, { hint: "Return unique emails" })
 `)
     const result = scanSourceFiles([file])
     expect(result.calls).toHaveLength(1)
     expect(result.calls[0].hint).toBe("Return unique emails")
+    expect(result.calls[0].args).toHaveLength(1)
+    expect(result.calls[0].args[0].text).toBe("body")
+  })
+
+  it("treats single { hint } object as hint -> zero args", () => {
+    const file = writeSource(dir, "test.ts", `
+import { aigen } from "@aigen/runtime"
+
+const result = aigen.get_time({ hint: "current time in unix" })
+`)
+    const result = scanSourceFiles([file])
+    expect(result.calls).toHaveLength(1)
+    expect(result.calls[0].hint).toBe("current time in unix")
+    expect(result.calls[0].args).toHaveLength(0)
+  })
+
+  it("treats single string arg as real argument, not hint", () => {
+    const file = writeSource(dir, "test.ts", `
+import { aigen } from "@aigen/runtime"
+
+const result = aigen.greet_user("world")
+`)
+    const result = scanSourceFiles([file])
+    expect(result.calls).toHaveLength(1)
+    expect(result.calls[0].hint).toBeUndefined()
+    expect(result.calls[0].args).toHaveLength(1)
+    expect(result.calls[0].args[0].text).toBe('"world"')
   })
 
   it("detects assignment variable", () => {

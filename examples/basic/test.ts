@@ -31,7 +31,6 @@ const config: AgentConfig = {
   maxRepairAttempts: 2,
   cache: false,
   generatedFile: "src/agent.generated.ts",
-  ambiguityBlocklist: [],
 }
 
 try {

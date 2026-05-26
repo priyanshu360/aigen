@@ -88,23 +88,26 @@ const emails = aigen.extract_emails_from_text(body)
 
 No implementation exists yet. Aigen generates it at build time.
 
-### Optional Hint String
+### Optional Hint Object
 
-Developers can append a plain string as the **last argument** to guide generation. This string is stripped at build time and never appears in the generated function signature.
+Developers can append an options object as the **last argument** to guide generation. The object is stripped at build time and never appears in the generated function signature.
 
 ```typescript
 const emails = aigen.extract_emails_from_text(
   body,
-  "Return unique emails only, lowercase"
+  { hint: "Return unique emails only, lowercase" }
 )
 
 const slug = aigen.slugify_title(
   title,
-  "Preserve unicode characters"
+  { hint: "Preserve unicode characters" }
 )
 ```
 
-**Rule:** The hint must always be a string literal (not a variable). The build scanner detects it via AST and excludes it from the inferred function signature.
+**Rules:**
+- The options object must be the last argument
+- If used with no other arguments, the entire call becomes zero-arg (options are purely hint, not a real argument)
+- The `hint` value must be a string literal (not a variable)
 
 ---
 
@@ -124,28 +127,6 @@ aigen.truncate_string_to_words(text, limit)
 ```
 
 ### Discouraged — Ambiguous names
-
-```typescript
-aigen.process(data)      // ⚠️ too generic
-aigen.execute(payload)   // ⚠️ too generic
-aigen.run(input)         // ⚠️ too generic
-```
-
-The ambiguity check logs a **warning** (not a blocking error). The generation proceeds regardless. This allows the LLM to decide — the check is advisory.
-
-**Ambiguity rule:** A function name triggers a warning if it:
-1. Consists of a single generic verb from the blocklist: `process`, `run`, `execute`, `compute`, `handle`, `do`, `perform`, `apply`, `transform`, `convert`, `get`, `set`, `update`, `parse` (when used alone without a subject noun)
-2. Contains fewer than two semantic tokens
-
-**Build warning output:**
-
-```
-[AgentGen] WARNING: Function name 'process' is too ambiguous.
-  Suggested alternatives:
-    aigen.process_user_csv(data)
-  Proceeding with generation anyway.
-```
-
 ---
 
 ## 7. Signature Conflict Detection
@@ -193,7 +174,7 @@ npm run build
 
 ```typescript
 // AUTO GENERATED — do not edit by hand
-// To lock a function from regeneration, add: // @aigen-lock
+// Delete a function and re-run the build to regenerate it.
 
 export function extract_emails_from_text(text: string): string[] {
   const matches = text.match(
@@ -222,7 +203,7 @@ For each `aigen.*` call discovered, the following context is collected and inclu
 | Function name | `extract_emails_from_text` | Primary semantic signal |
 | Arguments | `body: string` | Infer input types |
 | Assignment variable | `const emails =` | Infer return type |
-| Hint string | `"Return unique emails only"` | Shape the implementation |
+| Hint string | `{ hint: "Return unique emails only" }` | Shape the implementation |
 | Nearby code (+10 lines) | `for (const email of emails)` | Infer usage intent |
 | Available imports | `import fs from "fs"` | Constrain implementation to available libs |
 
@@ -264,25 +245,18 @@ Generated code is **committed to source control** by default. Benefits:
 - Easier debugging — generated code is visible and readable
 - No hidden generation state
 
-### Function Ownership and Locking
+### Function Existence Check
 
-By default, all functions in `agent.generated.ts` are regenerated if their call-site context changes.
+When a function already exists in `agent.generated.ts`, Aigen skips generation with a message:
 
-To **lock** a function and prevent future builds from overwriting manual edits:
-
-```typescript
-// @aigen-lock
-export function extract_emails_from_text(text: string): string[] {
-  // custom hand-written implementation
-  // Aigen will not touch this function
-}
+```
+[AgentGen] Skipping 'extract_emails_from_text' — already exists at src/agent.generated.ts:12
 ```
 
-**Lock behaviour:**
-
-- Locked functions are excluded from the generation pipeline entirely
-- The parser scans for the `@aigen-lock` comment preceding exported functions
-- To unlock, remove the comment and re-run the build
+**Behaviour:**
+- Existing functions are excluded from the generation pipeline and preserved verbatim
+- To regenerate, delete the function from the file and re-run the build
+- Unused existing functions (no call site in the current scan) are also preserved
 
 ---
 
@@ -294,8 +268,6 @@ export function extract_emails_from_text(text: string): string[] {
 src/**/*.ts
       ↓
 AST scan (ts-morph) — discover aigen.* calls
-      ↓
-Ambiguity check (warning, not blocking)
       ↓
 Signature conflict check (blocking)
       ↓
@@ -320,7 +292,7 @@ Bundle
 
 ```
 packages/
-├── aigen-core/           ← scanner, context, cache, prompt, ambiguity,
+├── aigen-core/           ← scanner, context, cache, prompt,
 │                           conflict detection, repair, pipeline, config,
 │                           GitAgentProvider
 ├── aigen-runtime/        ← re-exports generated functions
@@ -448,7 +420,6 @@ export default defineConfig({
   maxRepairAttempts: 3,
   cache: true,
   generatedFile: "src/agent.generated.ts",
-  ambiguityBlocklist: [],
 })
 ```
 
@@ -477,12 +448,11 @@ The config file is loaded at runtime via dynamic `import()`. If absent, all defa
 | Question | Decision | Rationale |
 |---|---|---|
 | Namespace | `aigen` | Short, memorable, tied to brand |
-| Hint syntax | Final string literal argument | Simpler than separate decorators; hint is obvious from position |
+| Hint syntax | Options object `{ hint: "..." }` as last argument | Explicit named field, no ambiguity with string args |
 | Generated file location | Single `src/agent.generated.ts` (V1) | Simpler; multi-file in V2 when warranted |
 | Commit strategy | Always commit generated file | Deterministic builds, code review, CI safety |
-| Function ownership | Regenerate by default; `// @aigen-lock` to freeze | Explicit lock prevents surprise overwrites |
+| Function ownership | Preserve existing by default; delete to regenerate | Simple predictable behavior, no annotation needed |
 | Model selection | Configurable via plugin options + config file | GitAgent abstraction handles provider swap |
-| Ambiguity detection | Blocklist + two-token minimum; **warning not error** | LLM can still generate useful code; advisory only |
 | Signature conflicts | Build error — developer must resolve | Guessing the "right" signature silently would produce wrong code |
 | Caching | SHA-256 hash of name + arg types + hint | Avoids redundant LLM calls; `noCache` escape hatch |
 | Runtime | Re-export from generated file (no Proxy) | Simpler, no Proxy overhead, TypeScript sees real types |
@@ -501,22 +471,3 @@ The config file is loaded at runtime via dynamic `import()`. If absent, all defa
 - **Dependency-aware generation** — if `aigen.fn_a` is used inside a hand-written function that also calls `aigen.fn_b`, generate them in dependency order
 - **VSCode extension** — inline preview of what would be generated, without running the full build
 
----
-
-## Appendix A — Ambiguity Blocklist (Built-In)
-
-Single-token names on this list trigger a warning:
-
-```
-process, run, execute, compute, handle, do, perform, apply,
-transform, convert, get, set, update, parse, format, check,
-validate, fetch, load, save, send, receive, map, filter, reduce
-```
-
-These are only warned when used **alone** (e.g. `aigen.process`). Combined with a subject noun they pass cleanly:
-
-```typescript
-aigen.process_csv_rows(data)    // ✅ clean
-aigen.parse_iso_date(str)       // ✅ clean
-aigen.filter_inactive_users(users) // ✅ clean
-```

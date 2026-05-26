@@ -26,5 +26,5 @@ On build, Vite will:
 ## Customization
 
 - Add a **hint** by passing a string as the last argument: `aigen.sayHello("world", "return a friendly greeting")`
-- **Lock** a generated function by adding `// @aigen-lock` above it in `src/agent.generated.ts`
+- **Skip** an existing function by leaving it in `src/agent.generated.ts` — Aigen skips with a message about file and line. Delete it and rebuild to regenerate.
 - Set `noCache: true` in the plugin options to force regeneration

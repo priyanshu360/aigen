@@ -8,7 +8,6 @@ const DEFAULT_CONFIG: AgentConfig = {
   maxRepairAttempts: 3,
   cache: true,
   generatedFile: "src/agent.generated.ts",
-  ambiguityBlocklist: [],
 }
 
 /**

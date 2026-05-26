@@ -1,14 +1,12 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs"
-import { join } from "node:path"
+import { join, resolve, sep } from "node:path"
 import { scanSourceFiles } from "./scanner"
 import { collectAllContexts } from "./context"
-import { checkAmbiguity } from "./ambiguity"
 import { computeHash, getCachedImplementation, setCachedImplementation } from "./cache"
 import { repairImplementation } from "./repair"
 import type { AgentConfig, GenerationProvider, FunctionContext, Argument } from "./types"
 
 const NAMESPACE = "[AgentGen]"
-const LOCK_MARKER = "@aigen-lock"
 
 /**
  * Main pipeline orchestrator.
@@ -34,24 +32,7 @@ export async function runPipeline(
 
   if (calls.length === 0) return
 
-  for (const call of calls) {
-    const error = checkAmbiguity(call.functionName, config.ambiguityBlocklist)
-    if (error) {
-      console.warn(`${NAMESPACE} WARNING: ${error.message}`)
-      if (error.suggestions?.length) {
-        console.warn(`  Suggested alternatives:`)
-        for (const s of error.suggestions) {
-          console.warn(`    aigen.${s}`)
-        }
-      }
-      console.warn(`  Proceeding with generation anyway.\n`)
-    }
-  }
-
-  const lockedFunctions = readLockedFunctions(rootDir, config.generatedFile)
-  if (lockedFunctions.size > 0) {
-    console.log(`${NAMESPACE} Skipping ${lockedFunctions.size} locked function(s)`)
-  }
+  const existingFunctions = readGeneratedFunctions(rootDir, config.generatedFile)
 
   const contexts = collectAllContexts(calls)
 
@@ -62,10 +43,17 @@ export async function runPipeline(
   const seen = new Set<string>()
 
   for (const [, group] of grouped) {
-    const ctx = group[0]
-
-    if (lockedFunctions.has(ctx.functionName)) {
-      generatedFunctions.push(lockedFunctions.get(ctx.functionName)!)
+    let ctx = pickBestContext(group)
+    if (!ctx.hint) {
+      const hint = group.find((g) => g.hint)?.hint
+      if (hint) ctx = { ...ctx, hint }
+    }
+    const existing = existingFunctions.get(ctx.functionName)
+    if (existing) {
+      console.log(
+        `${NAMESPACE} Skipping '${ctx.functionName}' — already exists at ${config.generatedFile}:${existing.line}`
+      )
+      generatedFunctions.push(existing.code)
       seen.add(ctx.functionName)
       continue
     }
@@ -125,7 +113,7 @@ export async function runPipeline(
     seen.add(ctx.functionName)
   }
 
-  for (const [name, code] of lockedFunctions) {
+  for (const [name, { code }] of existingFunctions) {
     if (!seen.has(name)) {
       generatedFunctions.push(code)
     }
@@ -135,40 +123,43 @@ export async function runPipeline(
   console.log(`${NAMESPACE} Generated ${generatedFunctions.length} function(s) in ${config.generatedFile}`)
 }
 
-function readLockedFunctions(
+function resolvePathSafe(rootDir: string, relativePath: string): string {
+  const safeRoot = resolve(rootDir) + sep
+  const resolved = resolve(join(rootDir, relativePath))
+  if (!resolved.startsWith(safeRoot)) {
+    throw new Error(`generatedFile path '${relativePath}' escapes project root`)
+  }
+  return resolved
+}
+
+function readGeneratedFunctions(
   rootDir: string,
   relativePath: string
-): Map<string, string> {
-  const fullPath = join(rootDir, relativePath)
+): Map<string, { code: string; line: number }> {
+  const fullPath = resolvePathSafe(rootDir, relativePath)
   if (!existsSync(fullPath)) return new Map()
 
   const text = readFileSync(fullPath, "utf-8")
-  const locked = new Map<string, string>()
+  const existing = new Map<string, { code: string; line: number }>()
 
-  const funcRegex = /^(?:\/\/\s*@aigen-lock\s*\n+)?export\s+function\s+(\w+)/gm
+  const funcRegex = /export\s+function\s+(\w+)/g
   let match: RegExpExecArray | null
-  const funcStarts: { name: string; index: number; locked: boolean }[] = []
+  const funcStarts: { name: string; index: number }[] = []
 
   while ((match = funcRegex.exec(text)) !== null) {
-    const pos = match.index
-    const preceding = text.slice(Math.max(0, pos - 50), pos)
-    funcStarts.push({
-      name: match[1],
-      index: pos,
-      locked: preceding.includes(LOCK_MARKER),
-    })
+    funcStarts.push({ name: match[1], index: match.index })
   }
 
   for (let i = 0; i < funcStarts.length; i++) {
-    if (!funcStarts[i].locked) continue
     const start = funcStarts[i].index
     const end = i + 1 < funcStarts.length
       ? funcStarts[i + 1].index
       : text.length
-    locked.set(funcStarts[i].name, text.slice(start, end).trim())
+    const line = text.slice(0, start).split("\n").length
+    existing.set(funcStarts[i].name, { code: text.slice(start, end).trim(), line })
   }
 
-  return locked
+  return existing
 }
 
 function groupContexts(contexts: FunctionContext[]): Map<string, FunctionContext[]> {
@@ -179,6 +170,14 @@ function groupContexts(contexts: FunctionContext[]): Map<string, FunctionContext
     grouped.set(ctx.functionName, existing)
   }
   return grouped
+}
+
+function pickBestContext(group: FunctionContext[]): FunctionContext {
+  return group.reduce((best, ctx) => {
+    const score = (ctx.parentFunction ? 2 : 0) + (ctx.hint ? 1 : 0) + (ctx.availableImports.length > 0 ? 1 : 0)
+    const bestScore = (best.parentFunction ? 2 : 0) + (best.hint ? 1 : 0) + (best.availableImports.length > 0 ? 1 : 0)
+    return score > bestScore ? ctx : best
+  })
 }
 
 function collectArgPatterns(group: FunctionContext[]): Argument[][] {
@@ -198,9 +197,9 @@ function writeGeneratedFile(
   relativePath: string,
   functions: string[]
 ): void {
-  const fullPath = join(rootDir, relativePath)
+  const fullPath = resolvePathSafe(rootDir, relativePath)
   const header = `// AUTO GENERATED — do not edit by hand\n` +
-    `// To lock a function from regeneration, add: // @aigen-lock\n\n`
+    `// Delete a function and re-run the build to regenerate it.\n\n`
 
   const content = header + functions.join("\n\n") + "\n"
 

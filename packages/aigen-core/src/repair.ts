@@ -24,6 +24,14 @@ export async function repairImplementation(
   let current = implementation
   let lastError = compileError
 
+  if (!lastError) {
+    const check = checkTypeScript(current)
+    if (check === true) {
+      return { success: true, implementation: current, attempts: 0 }
+    }
+    lastError = check
+  }
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const result = await provider.repairFunction(
       functionName,
