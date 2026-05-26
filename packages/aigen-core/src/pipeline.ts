@@ -3,10 +3,9 @@ import { join } from "node:path"
 import { scanSourceFiles } from "./scanner"
 import { collectAllContexts } from "./context"
 import { checkAmbiguity } from "./ambiguity"
-import { detectConflicts } from "./conflict"
 import { computeHash, getCachedImplementation, setCachedImplementation } from "./cache"
 import { repairImplementation } from "./repair"
-import type { AgentConfig, GenerationProvider } from "./types"
+import type { AgentConfig, GenerationProvider, FunctionContext, Argument } from "./types"
 
 const NAMESPACE = "[AgentGen]"
 const LOCK_MARKER = "@aigen-lock"
@@ -49,23 +48,6 @@ export async function runPipeline(
     }
   }
 
-  const conflict = detectConflicts(calls)
-  if (conflict) {
-    console.error(
-      `${NAMESPACE} ERROR: Conflicting signatures detected for '${conflict.functionName}':\n`
-    )
-    for (const loc of conflict.locations) {
-      console.error(`  ${loc.sourceFile}:${loc.lineNumber}  — ${loc.signature}`)
-    }
-    console.error(
-      `\nResolve the conflict by:\n` +
-      `  1. Using the same signature in all call sites, or\n` +
-      `  2. Renaming one call to a different function ` +
-      `(e.g. ${conflict.functionName}_v2)`
-    )
-    process.exit(1)
-  }
-
   const lockedFunctions = readLockedFunctions(rootDir, config.generatedFile)
   if (lockedFunctions.size > 0) {
     console.log(`${NAMESPACE} Skipping ${lockedFunctions.size} locked function(s)`)
@@ -73,14 +55,27 @@ export async function runPipeline(
 
   const contexts = collectAllContexts(calls)
 
+  // Group contexts by function name to handle multiple call-site variants
+  const grouped = groupContexts(contexts)
+
   const generatedFunctions: string[] = []
   const seen = new Set<string>()
 
-  for (const ctx of contexts) {
+  for (const [, group] of grouped) {
+    const ctx = group[0]
+
     if (lockedFunctions.has(ctx.functionName)) {
       generatedFunctions.push(lockedFunctions.get(ctx.functionName)!)
       seen.add(ctx.functionName)
       continue
+    }
+
+    // Collect unique arg patterns across all call sites for the same function
+    const allPatterns = collectArgPatterns(group)
+    if (allPatterns.length > 1) {
+      ctx.argVariants = allPatterns
+      const variants = allPatterns.map((p) => `(${p.map((a) => a.type).join(", ")})`).join(", ")
+      console.log(`${NAMESPACE} '${ctx.functionName}' called with ${allPatterns.length} arg patterns: ${variants}`)
     }
 
     const hintTypes = ctx.hint
@@ -174,6 +169,28 @@ function readLockedFunctions(
   }
 
   return locked
+}
+
+function groupContexts(contexts: FunctionContext[]): Map<string, FunctionContext[]> {
+  const grouped = new Map<string, FunctionContext[]>()
+  for (const ctx of contexts) {
+    const existing = grouped.get(ctx.functionName) ?? []
+    existing.push(ctx)
+    grouped.set(ctx.functionName, existing)
+  }
+  return grouped
+}
+
+function collectArgPatterns(group: FunctionContext[]): Argument[][] {
+  const seen = new Set<string>()
+  const patterns: Argument[][] = []
+  for (const ctx of group) {
+    const sig = ctx.args.map((a) => `${a.type}`).join("|")
+    if (seen.has(sig)) continue
+    seen.add(sig)
+    patterns.push(ctx.args)
+  }
+  return patterns
 }
 
 function writeGeneratedFile(

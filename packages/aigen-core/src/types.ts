@@ -21,6 +21,8 @@ export interface FunctionContext extends CallSite {
     signature?: string
     jsDoc?: string
   }
+  /** When the same function is called with different arg types across multiple call sites */
+  argVariants?: { name?: string; type: string }[][]
 }
 
 export interface AgentConfig {

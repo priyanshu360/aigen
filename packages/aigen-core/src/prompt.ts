@@ -1,8 +1,5 @@
 import type { FunctionContext } from "./types"
 
-/**
- * Build a structured prompt for the LLM from call-site context.
- */
 export function buildPrompt(context: FunctionContext): string {
   const sections: string[] = []
 
@@ -10,16 +7,27 @@ export function buildPrompt(context: FunctionContext): string {
 
   sections.push(`Function name: ${context.functionName}`)
 
-  const args = context.hint
+  const primaryArgs = context.hint
     ? context.args.slice(0, -1)
     : context.args
 
-  if (args.length > 0) {
+  if (primaryArgs.length > 0) {
     sections.push(
-      `Arguments: ${args.map((a) => `${a.name ?? "arg"}: ${a.type}`).join(", ")}`
+      `Arguments: ${primaryArgs.map((a) => `${a.name ?? "arg"}: ${a.type}`).join(", ")}`
     )
   } else {
     sections.push("Arguments: none")
+  }
+
+  if (context.argVariants && context.argVariants.length > 1) {
+    const variantLines = context.argVariants
+      .map((variant) => {
+        const parts = variant.map((a) => `${a.name ?? "arg"}: ${a.type}`).join(", ")
+        return `  (${parts})`
+      })
+      .join("\n")
+    sections.push(`\nThis function is called with these argument patterns:\n${variantLines}`)
+    sections.push("Generate a single function that handles all patterns using union types.")
   }
 
   if (context.assignmentVar) {
