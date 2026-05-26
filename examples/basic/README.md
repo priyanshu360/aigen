@@ -1,4 +1,4 @@
-# @aigen/example-basic
+# @pynhu/aigen-example-basic
 
 Demonstrates multi-file usage — `aigen.computeArea()` is called from three shape modules with different argument signatures, and the pipeline generates a single merged function.
 

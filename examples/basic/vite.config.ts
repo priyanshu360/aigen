@@ -1,5 +1,5 @@
 import { defineConfig } from "vite"
-import { aigenPlugin } from "@aigen/vite"
+import { aigenPlugin } from "@pynhu/aigen-vite"
 
 export default defineConfig({
   plugins: [

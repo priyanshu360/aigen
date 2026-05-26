@@ -39,7 +39,7 @@ Aigen eliminates this interrupt entirely by making the build pipeline itself the
 ## 3. Namespace: `aigen`
 
 ```typescript
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body)
 const domain = aigen.get_domain_from_email(email)
@@ -48,7 +48,7 @@ const lines  = aigen.read_lines_from_string(content)
 
 Before build-time generation, the import resolves to an empty module — calling `aigen.*` will throw a runtime error since no exports exist.
 
-After generation, the build plugin resolves `@aigen/runtime` to the generated file, so `import { aigen }` transparently gets the implementations.
+After generation, the build plugin resolves `@pynhu/aigen-runtime` to the generated file, so `import { aigen }` transparently gets the implementations.
 
 ---
 
@@ -76,7 +76,7 @@ After generation, the build plugin resolves `@aigen/runtime` to the generated fi
 ### Basic Usage
 
 ```typescript
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body)
 ```
@@ -146,7 +146,7 @@ This avoids blocking the build — the pipeline groups contexts, picks the riche
 ### Developer Code
 
 ```typescript
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(
   body,
@@ -296,9 +296,9 @@ examples/
 aigen-agent/              ← separate repo — agent YAML, SOUL, RULES, skills
 ```
 
-### `@aigen/runtime`
+### `@pynhu/aigen-runtime`
 
-The runtime package is a lightweight namespace for generated functions. At build time, the plugin resolves `@aigen/runtime` imports to the generated file, so `import { aigen }` transparently gets the implementations. No proxy or runtime overhead.
+The runtime package is a lightweight namespace for generated functions. At build time, the plugin resolves `@pynhu/aigen-runtime` imports to the generated file, so `import { aigen }` transparently gets the implementations. No proxy or runtime overhead.
 
 Before generation, the resolved namespace is empty — calling `aigen.*` before the first build will throw. This is intentional: the build plugin runs before compilation and generates the file.
 
@@ -387,7 +387,7 @@ All blocking errors exit with non-zero. No partial file is written.
 
 ### Plugin Options
 
-Both `@aigen/vite` and `@aigen/esbuild` accept:
+Both `@pynhu/aigen-vite` and `@pynhu/aigen-esbuild` accept:
 
 ```typescript
 interface AigenPluginOptions {
@@ -401,7 +401,7 @@ interface AigenPluginOptions {
 ### Config File (`aigen.config.ts`)
 
 ```typescript
-import { defineConfig } from "@aigen/core"
+import { defineConfig } from "@pynhu/aigen-core"
 
 export default defineConfig({
   model: "anthropic/claude-sonnet-4",
@@ -443,8 +443,8 @@ The config file is loaded at runtime via dynamic `import()`. If absent, all defa
 | Model selection | Configurable via plugin options + config file | GitAgent abstraction handles provider swap |
 | Multi-signature handling | Merge with union types via `argVariants` in prompt | Non-blocking — LLM generates one function for all patterns |
 | Caching | SHA-256 hash of name + arg types + hint | Avoids redundant LLM calls; `noCache` escape hatch |
-| Runtime | Build plugin resolves `@aigen/runtime` to generated file | No Proxy overhead, TypeScript sees real types |
-| Package organization | Monolithic `@aigen/core` + thin plugin packages | Fewer packages to publish and manage |
+| Runtime | Build plugin resolves `@pynhu/aigen-runtime` to generated file | No Proxy overhead, TypeScript sees real types |
+| Package organization | Monolithic `@pynhu/aigen-core` + thin plugin packages | Fewer packages to publish and manage |
 | CLI | No CLI package — Vite/esbuild plugins instead | Natural integration with existing build pipelines |
 | CI behaviour | No special CI mode — committed file is always used | Simpler, no env-based branching |
 | Compile validation | Real `tsc` binary (resolved from node_modules) | Full type checking accuracy vs. `transpileModule` |

@@ -4,8 +4,8 @@
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { runPipeline } from "@aigen/core"
-import type { GenerationProvider, FunctionContext, AgentConfig } from "@aigen/core"
+import { runPipeline } from "@pynhu/aigen-core"
+import type { GenerationProvider, FunctionContext, AgentConfig } from "@pynhu/aigen-core"
 
 class TestProvider implements GenerationProvider {
   async generateFunction(_name: string, _ctx: FunctionContext) {
@@ -30,15 +30,15 @@ console.log("Test dir:", tmp)
 // Create multi-file source with same function name across files
 writeFileSync(
   join(tmp, "circle.ts"),
-  `import { aigen } from "@aigen/runtime"\nexport function area(r: number) { return aigen.computeArea("circle", r) }\n`,
+  `import { aigen } from "@pynhu/aigen-runtime"\nexport function area(r: number) { return aigen.computeArea("circle", r) }\n`,
 )
 writeFileSync(
   join(tmp, "rect.ts"),
-  `import { aigen } from "@aigen/runtime"\nexport function area(w: number, h: number) { return aigen.computeArea("rect", w, h) }\n`,
+  `import { aigen } from "@pynhu/aigen-runtime"\nexport function area(w: number, h: number) { return aigen.computeArea("rect", w, h) }\n`,
 )
 writeFileSync(
   join(tmp, "triangle.ts"),
-  `import { aigen } from "@aigen/runtime"\nexport function area(b: number, h: number) { return aigen.computeArea("triangle", b, h, { hint: "half base times height" }) }\n`,
+  `import { aigen } from "@pynhu/aigen-runtime"\nexport function area(b: number, h: number) { return aigen.computeArea("triangle", b, h, { hint: "half base times height" }) }\n`,
 )
 
 const config: AgentConfig = {

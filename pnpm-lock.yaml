@@ -10,21 +10,21 @@ importers:
 
   examples/basic:
     dependencies:
-      '@aigen/runtime':
+      '@pynhu/aigen-runtime':
         specifier: workspace:*
-        version: link:../../packages/aigen-runtime
+        version: link:../../packages/pynhu-aigen-runtime
     devDependencies:
-      '@aigen/core':
+      '@pynhu/aigen-core':
         specifier: workspace:*
-        version: link:../../packages/aigen-core
-      '@aigen/vite':
+        version: link:../../packages/pynhu-aigen-core
+      '@pynhu/aigen-vite':
         specifier: workspace:*
-        version: link:../../packages/aigen-vite
+        version: link:../../packages/pynhu-aigen-vite
       vite:
         specifier: ^6
         version: 6.4.2(@types/node@22.19.19)(yaml@2.9.0)
 
-  packages/aigen-core:
+  packages/pynhu-aigen-core:
     dependencies:
       '@open-gitagent/gitagent':
         specifier: ^1.5.0
@@ -36,9 +36,9 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
     devDependencies:
-      '@aigen/runtime':
-        specifier: workspace:*
-        version: link:../aigen-runtime
+      '@pynhu/aigen-runtime':
+        specifier: workspace:^0.1.0
+        version: link:../pynhu-aigen-runtime
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.19
@@ -49,11 +49,11 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.19)
 
-  packages/aigen-esbuild:
+  packages/pynhu-aigen-esbuild:
     dependencies:
-      '@aigen/core':
-        specifier: workspace:*
-        version: link:../aigen-core
+      '@pynhu/aigen-core':
+        specifier: workspace:^0.1.0
+        version: link:../pynhu-aigen-core
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -71,7 +71,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.19)
 
-  packages/aigen-runtime:
+  packages/pynhu-aigen-runtime:
     devDependencies:
       tsup:
         specifier: ^8.3.0
@@ -83,11 +83,11 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.19)
 
-  packages/aigen-vite:
+  packages/pynhu-aigen-vite:
     dependencies:
-      '@aigen/core':
-        specifier: workspace:*
-        version: link:../aigen-core
+      '@pynhu/aigen-core':
+        specifier: workspace:^0.1.0
+        version: link:../pynhu-aigen-core
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

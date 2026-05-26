@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest"
 import { aigenPlugin } from "../index"
 
-describe("@aigen/vite", () => {
+describe("@pynhu/aigen-esbuild", () => {
   it("returns a plugin object with name", () => {
     const plugin = aigenPlugin({ agentDir: "/tmp/test-agent" })
-    expect(plugin.name).toBe("@aigen/vite")
+    expect(plugin.name).toBe("@pynhu/aigen-esbuild")
   })
 
   it("throws when agentDir is missing", () => {

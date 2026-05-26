@@ -1,5 +1,5 @@
 {
-  "name": "@aigen/runtime",
+  "name": "@pynhu/aigen-runtime",
   "version": "0.1.0",
   "publishConfig": { "access": "public" },
   "type": "module",

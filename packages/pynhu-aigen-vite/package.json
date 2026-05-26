@@ -1,5 +1,5 @@
 {
-  "name": "@aigen/vite",
+  "name": "@pynhu/aigen-vite",
   "version": "0.1.0",
   "publishConfig": { "access": "public" },
   "type": "module",
@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@aigen/core": "^0.1.0"
+    "@pynhu/aigen-core": "workspace:^0.1.0"
   },
   "peerDependencies": {
     "vite": "^5.0.0 || ^6.0.0"

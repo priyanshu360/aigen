@@ -90,7 +90,7 @@ function extractImports(sourceFile: SourceFile): string[] {
   return sourceFile
     .getDescendantsOfKind(SyntaxKind.ImportDeclaration)
     .map((imp) => imp.getText())
-    .filter((text) => !text.includes("@aigen/runtime"))
+    .filter((text) => !text.includes("@pynhu/aigen-runtime"))
 }
 
 function findCallNode(

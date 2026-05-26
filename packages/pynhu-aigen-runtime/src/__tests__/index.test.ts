@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { aigen } from "../index"
 
-describe("@aigen/runtime", () => {
+describe("@pynhu/aigen-runtime", () => {
   it("exports aigen as an object", () => {
     expect(typeof aigen).toBe("object")
     expect(aigen).not.toBeNull()

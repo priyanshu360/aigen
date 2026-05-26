@@ -29,7 +29,7 @@ describe("scanSourceFiles", () => {
 
   it("discovers simple aigen calls", () => {
     const file = writeSource(dir, "test.ts", `
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body)
 `)
@@ -41,7 +41,7 @@ const emails = aigen.extract_emails_from_text(body)
 
   it("discovers multiple aigen calls in a file", () => {
     const file = writeSource(dir, "test.ts", `
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body)
 const domain = aigen.get_domain_from_email(email)
@@ -52,7 +52,7 @@ const domain = aigen.get_domain_from_email(email)
 
   it("extracts hint from options object with hint key", () => {
     const file = writeSource(dir, "test.ts", `
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body, { hint: "Return unique emails" })
 `)
@@ -65,7 +65,7 @@ const emails = aigen.extract_emails_from_text(body, { hint: "Return unique email
 
   it("treats single { hint } object as hint -> zero args", () => {
     const file = writeSource(dir, "test.ts", `
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const result = aigen.get_time({ hint: "current time in unix" })
 `)
@@ -77,7 +77,7 @@ const result = aigen.get_time({ hint: "current time in unix" })
 
   it("treats single string arg as real argument, not hint", () => {
     const file = writeSource(dir, "test.ts", `
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const result = aigen.greet_user("world")
 `)
@@ -90,7 +90,7 @@ const result = aigen.greet_user("world")
 
   it("detects assignment variable", () => {
     const file = writeSource(dir, "test.ts", `
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body)
 `)
@@ -109,7 +109,7 @@ const result = something.do_thing(data)
 
   it("captures line numbers", () => {
     const file = writeSource(dir, "test.ts", `
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body)
 `)

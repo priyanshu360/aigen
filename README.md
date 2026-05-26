@@ -3,7 +3,7 @@
 Write the flow. Let the build generate the obvious parts.
 
 ```typescript
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const emails = aigen.extract_emails_from_text(body)
 const slug   = aigen.slugify_title(title)
@@ -15,14 +15,14 @@ During `vite build` (or `esbuild`), Aigen discovers `aigen.*` calls, generates i
 
 ```bash
 git clone <aigen-agent-repo-url> ../aigen-agent   # agent skills
-pnpm add @aigen/vite @aigen/runtime
+pnpm add @pynhu/aigen-vite @pynhu/aigen-runtime
 ```
 
 **`vite.config.ts`**
 
 ```ts
 import { defineConfig } from "vite"
-import { aigenPlugin } from "@aigen/vite"
+import { aigenPlugin } from "@pynhu/aigen-vite"
 
 export default defineConfig({
   plugins: [aigenPlugin({ agentDir: "../aigen-agent" })],
@@ -32,7 +32,7 @@ export default defineConfig({
 **`src/main.ts`**
 
 ```ts
-import { aigen } from "@aigen/runtime"
+import { aigen } from "@pynhu/aigen-runtime"
 
 const domain = aigen.get_domain_from_email("user@example.com")
 console.log(domain)
@@ -44,10 +44,10 @@ Run `npm run build`. The first build generates and compiles all functions.
 
 | Package | Description |
 |---|---|
-| `@aigen/core` | Scanner, context collector, cache, prompt builder, repair loop, pipeline orchestrator |
-| `@aigen/runtime` | Runtime re-export of generated functions (`import { aigen } from "@aigen/runtime"`) |
-| `@aigen/vite` | Vite plugin |
-| `@aigen/esbuild` | esbuild plugin |
+| `@pynhu/aigen-core` | Scanner, context collector, cache, prompt builder, repair loop, pipeline orchestrator |
+| `@pynhu/aigen-runtime` | Runtime re-export of generated functions (`import { aigen } from "@pynhu/aigen-runtime"`) |
+| `@pynhu/aigen-vite` | Vite plugin |
+| `@pynhu/aigen-esbuild` | esbuild plugin |
 
 ## Hints
 

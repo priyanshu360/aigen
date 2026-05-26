@@ -1,5 +1,5 @@
 {
-  "name": "@aigen/example-basic",
+  "name": "@pynhu/aigen-example-basic",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,11 +8,11 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@aigen/runtime": "workspace:*"
+    "@pynhu/aigen-runtime": "workspace:*"
   },
   "devDependencies": {
-    "@aigen/core": "workspace:*",
-    "@aigen/vite": "workspace:*",
+    "@pynhu/aigen-core": "workspace:*",
+    "@pynhu/aigen-vite": "workspace:*",
     "vite": "^6"
   }
 }
