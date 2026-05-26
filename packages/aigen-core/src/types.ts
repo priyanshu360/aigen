@@ -10,7 +10,9 @@ export interface CallSite {
   hint?: string
   sourceFile: string
   lineNumber: number
+  byteOffset: number
   assignmentVar?: string
+  assignmentType?: string
 }
 
 export interface FunctionContext extends CallSite {
@@ -30,7 +32,6 @@ export interface AgentConfig {
   maxRepairAttempts: number
   cache: boolean
   generatedFile: string
-  ambiguityBlocklist: string[]
 }
 
 export interface AigenPluginOptions {

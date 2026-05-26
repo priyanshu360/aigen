@@ -101,9 +101,29 @@ function extractCodeBlock(response: string): string | null {
   const match = response.match(codeBlockRegex)
   if (match) return match[1].trim()
 
-  const exportRegex = /export\s+function\s+\w+[\s\S]*?(?=\n(?:export|\/\/|$)|$)/
-  const exportMatch = response.match(exportRegex)
-  if (exportMatch) return exportMatch[0].trim()
+  const result = extractByBraceBalance(response)
+  if (result) return result.trim()
 
+  return null
+}
+
+function extractByBraceBalance(response: string): string | null {
+  const start = response.search(/export\s+function\s+\w+/)
+  if (start === -1) return null
+
+  let depth = 0
+  let inString: string | null = null
+  for (let i = start; i < response.length; i++) {
+    const ch = response[i]
+    if (inString) {
+      if (ch === inString && response[i - 1] !== "\\") inString = null
+    } else if (ch === '"' || ch === "'" || ch === "`") {
+      inString = ch
+    } else if (ch === "{") {
+      depth++
+    } else if (ch === "}") {
+      if (--depth === 0) return response.slice(start, i + 1)
+    }
+  }
   return null
 }

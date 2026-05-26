@@ -11,7 +11,6 @@ import type { CallSite, Argument } from "./types"
 export interface ScanResult {
   calls: CallSite[]
 }
-
 export function scanSourceFiles(sources: string[]): ScanResult {
   const project = new Project({ skipAddingFilesFromTsConfig: true })
 
@@ -45,15 +44,23 @@ function findAigenCalls(sourceFile: SourceFile): CallSite[] {
     const functionName = propAccess.getName()
     const allArgs = call.getArguments()
     const lineNumber = call.getStartLineNumber()
+    const byteOffset = call.getStart()
 
     let hint: string | undefined
     let actualArgs = allArgs
 
     if (allArgs.length > 0) {
       const last = allArgs[allArgs.length - 1]
-      if (last.getKind() === SyntaxKind.StringLiteral) {
-        hint = last.getText().slice(1, -1)
-        actualArgs = allArgs.slice(0, -1)
+      const obj = last.asKind(SyntaxKind.ObjectLiteralExpression)
+      if (obj) {
+        const hintProp = obj.getProperty("hint")?.asKind(SyntaxKind.PropertyAssignment)
+        if (hintProp) {
+          const initializer = hintProp.getInitializer()
+          if (initializer?.getKind() === SyntaxKind.StringLiteral) {
+            hint = initializer.getText().slice(1, -1)
+            actualArgs = allArgs.slice(0, -1)
+          }
+        }
       }
     }
 
@@ -63,7 +70,7 @@ function findAigenCalls(sourceFile: SourceFile): CallSite[] {
       name: arg.getKind() === SyntaxKind.Identifier ? arg.getText() : undefined,
     }))
 
-    const assignmentVar = getAssignmentVariable(call)
+    const { name: assignmentVar, type: assignmentType } = getAssignmentVariable(call)
 
     calls.push({
       functionName,
@@ -71,7 +78,9 @@ function findAigenCalls(sourceFile: SourceFile): CallSite[] {
       hint,
       sourceFile: sourceFile.getFilePath(),
       lineNumber,
+      byteOffset,
       assignmentVar,
+      assignmentType,
     })
   }
 
@@ -87,19 +96,27 @@ function inferType(arg: Expression): string {
   return "unknown"
 }
 
-function getAssignmentVariable(call: CallExpression): string | undefined {
+function getAssignmentVariable(call: CallExpression): { name?: string; type?: string } {
   const parent = call.getParent()
-  if (!parent) return undefined
+  if (!parent) return {}
 
   if (parent.getKind() === SyntaxKind.VariableDeclaration) {
     const decl = parent.asKind(SyntaxKind.VariableDeclaration)
-    if (decl) return decl.getName()
+    if (decl) {
+      let type: string | undefined
+      try {
+        const t = decl.getType()
+        const text = t.getText()
+        if (text && text !== "any") type = text
+      } catch {}
+      return { name: decl.getName(), type }
+    }
   }
 
   if (parent.getKind() === SyntaxKind.BinaryExpression) {
     const bin = parent.asKind(SyntaxKind.BinaryExpression)
-    if (bin) return bin.getLeft().getText()
+    if (bin) return { name: bin.getLeft().getText() }
   }
 
-  return undefined
+  return {}
 }
