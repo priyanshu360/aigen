@@ -1,14 +1,14 @@
-# ARD: AgentGen — Build-Time Utility Function Generation for TypeScript
+# ARD: Aigen — Build-Time Utility Function Generation for TypeScript
 
-> **Status:** Draft v2  
-> **Audience:** Coding agent / implementation team  
-> **Namespace:** `aigen` (short for Aigen)
+> **Status:** Draft v3
+> **Audience:** Coding agent / implementation team
+> **Namespace:** `aigen`
 
 ---
 
 ## 1. Executive Summary
 
-AgentGen is a TypeScript build-time code generation tool that lets developers reference utility functions before implementing them. During the build process, AgentGen discovers these calls, synthesizes implementations via a Aigen-backed LLM skill, validates them through TypeScript compilation, and writes the generated code into the repository.
+Aigen is a TypeScript build-time code generation tool that lets developers reference utility functions before implementing them. During the build process, Aigen discovers these calls, synthesizes implementations via an LLM-powered agent skill, validates them through TypeScript compilation, and writes the generated code into the repository.
 
 **Core philosophy:**
 
@@ -32,13 +32,11 @@ These functions are predictable, small, repetitive, and not central to business 
 Need helper → Open AI chat → Describe helper → Copy code → Paste code → Continue work
 ```
 
-AgentGen eliminates this interrupt entirely by making the build pipeline itself the code generator.
+Aigen eliminates this interrupt entirely by making the build pipeline itself the code generator.
 
 ---
 
 ## 3. Namespace: `aigen`
-
-The import namespace is `aigen`, short for **Aigen**. This replaces the generic `agent` prefix from earlier drafts.
 
 ```typescript
 import { aigen } from "@aigen/runtime"
@@ -48,14 +46,14 @@ const domain = aigen.get_domain_from_email(email)
 const lines  = aigen.read_lines_from_string(content)
 ```
 
-`aigen` is a Proxy object at runtime. Before build-time generation has run, calling any `aigen.*` method throws a clear error:
+Before build-time generation, the import resolves to an empty module — calling `aigen.*` will throw a runtime error since no exports exist.
 
-```
-[AgentGen] Function 'extract_emails_from_text' has not been generated yet.
-Run `npm run build` to generate it.
-```
+After generation, `@aigen/runtime` re-exports all implementations from `agent.generated.ts`:
 
-After generation, the Proxy delegates to the implementations in `agent.generated.ts`.
+```typescript
+// @aigen/runtime/src/index.ts
+export * as aigen from "./aigen.generated"
+```
 
 ---
 
@@ -88,7 +86,7 @@ import { aigen } from "@aigen/runtime"
 const emails = aigen.extract_emails_from_text(body)
 ```
 
-No implementation exists yet. AgentGen generates it at build time.
+No implementation exists yet. Aigen generates it at build time.
 
 ### Optional Hint String
 
@@ -125,39 +123,34 @@ aigen.parse_csv_rows(csvText)
 aigen.truncate_string_to_words(text, limit)
 ```
 
-### Disallowed — Ambiguous names
+### Discouraged — Ambiguous names
 
 ```typescript
-aigen.process(data)      // ❌ too generic
-aigen.execute(payload)   // ❌ too generic
-aigen.run(input)         // ❌ too generic
-aigen.compute(value)     // ❌ too generic
-aigen.handle(event)      // ❌ too generic
-aigen.do(thing)          // ❌ too generic
+aigen.process(data)      // ⚠️ too generic
+aigen.execute(payload)   // ⚠️ too generic
+aigen.run(input)         // ⚠️ too generic
 ```
 
-**Ambiguity rule:** A function name is rejected at build time if it:
+The ambiguity check logs a **warning** (not a blocking error). The generation proceeds regardless. This allows the LLM to decide — the check is advisory.
+
+**Ambiguity rule:** A function name triggers a warning if it:
 1. Consists of a single generic verb from the blocklist: `process`, `run`, `execute`, `compute`, `handle`, `do`, `perform`, `apply`, `transform`, `convert`, `get`, `set`, `update`, `parse` (when used alone without a subject noun)
-2. Contains fewer than two semantic tokens (e.g. `process_data` has subject `data` but is still too vague — prefer `normalize_user_csv`)
+2. Contains fewer than two semantic tokens
 
-**Build failure output:**
+**Build warning output:**
 
 ```
-[AgentGen] ERROR: Function name 'process' is too ambiguous to generate.
-
-Suggested alternatives:
-  aigen.process_user_csv(data)
-  aigen.process_invoice_rows(data)
-  aigen.process_payment_event(data)
-
-Rename the function call and re-run the build.
+[AgentGen] WARNING: Function name 'process' is too ambiguous.
+  Suggested alternatives:
+    aigen.process_user_csv(data)
+  Proceeding with generation anyway.
 ```
 
 ---
 
 ## 7. Signature Conflict Detection
 
-If the same function name is called in multiple places with **different argument shapes**, AgentGen emits an error rather than guessing:
+If the same function name is called in multiple places with **different argument shapes**, Aigen emits a blocking error rather than guessing:
 
 ```
 [AgentGen] ERROR: Conflicting signatures detected for 'extract_emails_from_text':
@@ -169,6 +162,8 @@ Resolve the conflict by:
   1. Using the same signature in all call sites, or
   2. Renaming one call to a different function (e.g. extract_first_n_emails_from_text)
 ```
+
+Conflict detection uses the type checker from `ts-morph` to infer argument types at each call site.
 
 ---
 
@@ -192,34 +187,6 @@ const lines  = aigen.read_lines_from_string(content)
 
 ```bash
 npm run build
-```
-
-### Pipeline
-
-```
-TypeScript source
-      ↓
-AST scan — discover aigen.* calls
-      ↓
-Signature conflict check
-      ↓
-Ambiguity check
-      ↓
-Context collection (name, args, assignment var, nearby code, imports)
-      ↓
-Cache lookup — hash(function_name + context)
-      ↓  [cache miss]
-Prompt builder
-      ↓
-Aigen runtime (LLM call via agent repo skills)
-      ↓
-Write to agent.generated.ts
-      ↓
-TypeScript compile
-      ↓ [error?]
-Compile error repair skill → retry (max N attempts)
-      ↓ [success]
-Bundle
 ```
 
 ### Generated Output
@@ -256,14 +223,14 @@ For each `aigen.*` call discovered, the following context is collected and inclu
 | Arguments | `body: string` | Infer input types |
 | Assignment variable | `const emails =` | Infer return type |
 | Hint string | `"Return unique emails only"` | Shape the implementation |
-| Nearby code (±10 lines) | `for (const email of emails)` | Infer usage intent |
+| Nearby code (+10 lines) | `for (const email of emails)` | Infer usage intent |
 | Available imports | `import fs from "fs"` | Constrain implementation to available libs |
 
 ---
 
 ## 10. Build-Time Caching
 
-To avoid redundant LLM calls, AgentGen maintains a local cache keyed by a SHA-256 hash of:
+To avoid redundant LLM calls, Aigen maintains a local cache keyed by a SHA-256 hash of:
 
 ```
 hash(function_name + serialized_argument_types + hint_string)
@@ -274,11 +241,7 @@ hash(function_name + serialized_argument_types + hint_string)
 - On cache hit: skip generation, use cached implementation
 - On cache miss: generate, compile, and write; store in cache on success
 - Cache is stored in `.aigen/cache.json` (gitignored by default)
-- Developers can force regeneration with `--no-cache` flag:
-
-```bash
-npm run build -- --no-cache
-```
+- Developers can force regeneration with `noCache: true` plugin option
 
 ---
 
@@ -296,7 +259,7 @@ src/
 ### Source Control
 
 Generated code is **committed to source control** by default. Benefits:
-- Deterministic builds (no generation required in CI if the file is present)
+- Deterministic builds (no generation required in CI)
 - Code review support — teammates can review and reject bad generations
 - Easier debugging — generated code is visible and readable
 - No hidden generation state
@@ -311,83 +274,91 @@ To **lock** a function and prevent future builds from overwriting manual edits:
 // @aigen-lock
 export function extract_emails_from_text(text: string): string[] {
   // custom hand-written implementation
-  // AgentGen will not touch this function
+  // Aigen will not touch this function
 }
 ```
 
 **Lock behaviour:**
 
 - Locked functions are excluded from the generation pipeline entirely
-- If a locked function's signature conflicts with a call site, the build emits a warning (not an error)
+- The parser scans for the `@aigen-lock` comment preceding exported functions
 - To unlock, remove the comment and re-run the build
 
 ---
 
 ## 12. Architecture
 
-### TypeScript Source → AST → Generation → Compile
+### Pipeline
 
 ```
 src/**/*.ts
       ↓
-@aigen/scanner  (ts-morph AST parser)
+AST scan (ts-morph) — discover aigen.* calls
       ↓
-Discovers all aigen.* calls
+Ambiguity check (warning, not blocking)
       ↓
-@aigen/context  (collects per-call context)
+Signature conflict check (blocking)
       ↓
-@aigen/cache    (SHA-256 hash lookup)
+Context collection (args, nearby code, imports, hint)
       ↓
-@aigen/prompt   (builds structured prompt)
+Cache lookup — SHA-256(function_name + arg_types + hint)
+      ↓  [cache miss]
+Prompt builder — assembles structured prompt
       ↓
-@aigen/runtime  (calls Aigen)
+LLM agent call (via @open-gitagent/gitagent SDK)
       ↓
-agent.generated.ts
+Compile validation (real tsc via resolved binary)
+      ↓ [error?]
+Repair loop — agent receives error, retries (max N)
+      ↓ [success]
+Write to agent.generated.ts
       ↓
-tsc (TypeScript compiler)
-      ↓ error?
-@aigen/repair   (calls Aigen repair skill with error message)
-      ↓ retry loop (max attempts: configurable, default 3)
-      ↓ success
-bundle
+Bundle
 ```
 
-### `@aigen/runtime` Package
+### Package Structure
 
-The `aigen` export is a `Proxy` object:
+```
+packages/
+├── aigen-core/           ← scanner, context, cache, prompt, ambiguity,
+│                           conflict detection, repair, pipeline, config,
+│                           GitAgentProvider
+├── aigen-runtime/        ← re-exports generated functions
+├── aigen-vite/           ← Vite plugin
+└── aigen-esbuild/        ← esbuild plugin
+
+examples/
+└── basic/                ← minimal Vite example project
+
+aigen-agent/              ← separate repo — agent YAML, SOUL, RULES, skills
+```
+
+### `@aigen/runtime`
 
 ```typescript
-// @aigen/runtime/index.ts
-
-export const aigen = new Proxy({} as Record<string, (...args: unknown[]) => unknown>, {
-  get(_, fnName: string) {
-    return (...args: unknown[]) => {
-      throw new Error(
-        `[AgentGen] '${fnName}' has not been generated yet. Run \`npm run build\`.`
-      )
-    }
-  }
-})
+// @aigen/runtime/src/index.ts
+export * as aigen from "./aigen.generated"
 ```
 
-At runtime (post-build), the generated file is imported and its exports are merged into the Proxy target, so `aigen.extract_emails_from_text` resolves to the real implementation.
+Before generation, `aigen.generated` doesn't exist — TypeScript compilation will error if `aigen.*` is used without first running the build. This is intentional: the build plugin runs before compilation and generates the file.
+
+After the build, all generated functions are available as `aigen.functionName(...)`.
 
 ---
 
-## 13. Aigen Integration
+## 13. LLM Agent Integration
 
-### Why Aigen
+### Why the GitAgent SDK
 
-Aigen provides:
+Aigen uses `@open-gitagent/gitagent` which provides:
 - Agent definitions stored in Git (versioned prompts)
 - Reusable, composable generation skills
-- Model abstraction (swap OpenAI / Anthropic / Gemini / local without code changes)
-- Workflow orchestration
+- Model abstraction (swap providers without code changes)
 
-### Agent Repository Structure
+### Agent Repository Structure (Separate Repo)
 
 ```
-typescript-function-agent/
+aigen-agent/
 ├── agent.yaml
 ├── SOUL.md
 ├── RULES.md
@@ -405,73 +376,29 @@ typescript-function-agent/
     └── generate-function.yaml
 ```
 
-### Skill Responsibilities
+### `GitAgentProvider`
 
-**Utility Generation Skill**
+The `GitAgentProvider` class wraps the `query()` function from `@open-gitagent/gitagent`. It:
 
-Input:
-```
-Function name: extract_emails_from_text
-Arguments: text: string
-Return type (inferred): string[]
-Hint: "Return unique emails only"
-Nearby code: for (const email of emails) { ... }
-```
+1. Builds a prompt via `buildPrompt()` from the context
+2. Calls `query({ prompt, dir: agentDir, model })`
+3. Extracts the code block from the agent response (` ```typescript ... ``` `)
+4. Falls back to raw `export function` extraction if no markdown code block is found
+5. Returns `null` on agent error (pipeline exits)
 
-Output:
-```typescript
-export function extract_emails_from_text(text: string): string[] {
-  const matches = text.match(
-    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
-  )
-  return [...new Set(matches ?? [])]
-}
-```
-
-**Type Inference Skill**
-
-- Infers argument types from call-site usage (variable names, surrounding code, TypeScript inference where available)
-- Infers return type from assignment variable name and downstream usage
-- Falls back to `unknown` with a build warning if inference is impossible
-
-**Compile Error Repair Skill**
-
-Input: original implementation + TypeScript compiler error message  
-Output: corrected implementation  
-Retries up to `maxRepairAttempts` (default: 3, configurable in `aigen.config.ts`)
-
-### Model Abstraction
-
-Aigen supports configurable model backends. `aigen.config.ts` specifies:
-
-```typescript
-export default {
-  model: "anthropic/claude-sonnet-4",   // or openai/gpt-4o, google/gemini-pro, etc.
-  maxRepairAttempts: 3,
-  cache: true,
-  generatedFile: "src/agent.generated.ts",
-}
-```
+For repairs, it constructs a prompt with the failed implementation and compiler error, and calls the same agent workflow.
 
 ---
 
 ## 14. Error Handling
 
-### Ambiguous Name
-
-```
-[AgentGen] ERROR: 'process' is too ambiguous.
-Suggested: process_user_csv, process_invoice_rows
-```
-
-### Signature Conflict
+### Signature Conflict (Blocking)
 
 ```
 [AgentGen] ERROR: Conflicting signatures for 'fn_name' across call sites.
-See section 7 for resolution steps.
 ```
 
-### Generation Failure (LLM could not produce valid output)
+### Generation Failure (Blocking)
 
 ```
 [AgentGen] ERROR: Could not generate 'fn_name' after 3 attempts.
@@ -479,62 +406,57 @@ Last compiler error: Property 'flatMap' does not exist on type 'string'.
 Review the function name and hint, then re-run the build.
 ```
 
-### All errors are blocking
+### Missing `agentDir` Option (Blocking)
 
-No generated file is written if any generation step fails. The build exits non-zero. This prevents partial states.
+```
+[AgentGen] The `agentDir` option is required. Point it to your aigen-agent repo.
+```
+
+### Ambiguous Name (Warning — non-blocking)
+
+```
+[AgentGen] WARNING: Function name 'process' is too ambiguous.
+  Proceeding with generation anyway.
+```
+
+All blocking errors exit with non-zero. No partial file is written.
 
 ---
 
-## 15. File Structure (Implementation)
+## 15. Configuration
 
-```
-packages/
-├── aigen-scanner/       ← ts-morph AST scanner, discovers aigen.* calls
-├── aigen-context/       ← context collector (args, nearby code, imports)
-├── aigen-cache/         ← SHA-256 hash cache, .aigen/cache.json
-├── aigen-prompt/        ← builds structured prompts per call
-├── aigen-runtime/       ← aigen Proxy export, @aigen/runtime npm package
-├── aigen-repair/        ← compile error repair loop
-└── aigen-cli/           ← npm run build integration, aigen.config.ts loader
+### Plugin Options
 
-agent-repo/                 ← Aigen skill repository
-├── agent.yaml
-├── skills/
-└── workflows/
-```
-
----
-
-## 16. Configuration
-
-`aigen.config.ts` at project root:
+Both `@aigen/vite` and `@aigen/esbuild` accept:
 
 ```typescript
-import { defineConfig } from "@aigen/cli"
+interface AigenPluginOptions {
+  agentDir: string     // required — path to aigen-agent repo
+  configFile?: string  // optional path to aigen.config.ts
+  noCache?: boolean    // force regeneration
+  model?: string       // LLM model override
+}
+```
+
+### Config File (`aigen.config.ts`)
+
+```typescript
+import { defineConfig } from "@aigen/core"
 
 export default defineConfig({
-  // LLM model (via Aigen abstraction)
   model: "anthropic/claude-sonnet-4",
-
-  // Max repair attempts on compile error
   maxRepairAttempts: 3,
-
-  // Enable/disable build cache
   cache: true,
-
-  // Output file for generated functions
   generatedFile: "src/agent.generated.ts",
-
-  // Blocklist of ambiguous single-token names (appended to built-in list)
   ambiguityBlocklist: [],
-
-
 })
 ```
 
+The config file is loaded at runtime via dynamic `import()`. If absent, all defaults apply.
+
 ---
 
-## 17. Success Metrics
+## 16. Success Metrics
 
 ### Developer Productivity
 - Reduction in time spent writing helper functions (measured via surveys)
@@ -550,22 +472,28 @@ export default defineConfig({
 
 ---
 
-## 18. Resolved Design Decisions
+## 17. Resolved Design Decisions
 
 | Question | Decision | Rationale |
 |---|---|---|
-| Namespace | `aigen` (Aigen) | Short, memorable, tied to brand |
-| Hint syntax | Final string literal argument | Simpler than `aigen.desc()`; hint is obvious from position |
-| Generated file location | Single `src/agent.generated.ts` (V1) | Simpler; multi-file in V2 when function count warrants it |
+| Namespace | `aigen` | Short, memorable, tied to brand |
+| Hint syntax | Final string literal argument | Simpler than separate decorators; hint is obvious from position |
+| Generated file location | Single `src/agent.generated.ts` (V1) | Simpler; multi-file in V2 when warranted |
 | Commit strategy | Always commit generated file | Deterministic builds, code review, CI safety |
 | Function ownership | Regenerate by default; `// @aigen-lock` to freeze | Explicit lock prevents surprise overwrites |
-| Model selection | Configurable via `aigen.config.ts` | Aigen abstraction handles provider swap |
-| Ambiguity detection | Blocklist of generic single-verb names + two-token minimum rule | Precise enough to enforce without false positives |
+| Model selection | Configurable via plugin options + config file | GitAgent abstraction handles provider swap |
+| Ambiguity detection | Blocklist + two-token minimum; **warning not error** | LLM can still generate useful code; advisory only |
 | Signature conflicts | Build error — developer must resolve | Guessing the "right" signature silently would produce wrong code |
-| Caching | SHA-256 hash of name + arg types + hint | Avoids redundant LLM calls; `--no-cache` escape hatch |
+| Caching | SHA-256 hash of name + arg types + hint | Avoids redundant LLM calls; `noCache` escape hatch |
+| Runtime | Re-export from generated file (no Proxy) | Simpler, no Proxy overhead, TypeScript sees real types |
+| Package organization | Monolithic `@aigen/core` + thin plugin packages | Fewer packages to publish and manage |
+| CLI | No CLI package — Vite/esbuild plugins instead | Natural integration with existing build pipelines |
+| CI behaviour | No special CI mode — committed file is always used | Simpler, no env-based branching |
+| Compile validation | Real `tsc` binary (resolved from node_modules) | Full type checking accuracy vs. `transpileModule` |
+
 ---
 
-## 19. Open Questions (V2 Scope)
+## 18. Open Questions (V2 Scope)
 
 - **Multi-file generated output** — split `agent.generated.ts` by domain when function count exceeds ~20
 - **Watch mode** — regenerate incrementally on file save during `npm run dev`
@@ -577,7 +505,7 @@ export default defineConfig({
 
 ## Appendix A — Ambiguity Blocklist (Built-In)
 
-Single-token names on this list always fail the build:
+Single-token names on this list trigger a warning:
 
 ```
 process, run, execute, compute, handle, do, perform, apply,
@@ -585,10 +513,10 @@ transform, convert, get, set, update, parse, format, check,
 validate, fetch, load, save, send, receive, map, filter, reduce
 ```
 
-These are only blocked when used **alone** (e.g. `aigen.process`). Combined with a subject noun they are allowed:
+These are only warned when used **alone** (e.g. `aigen.process`). Combined with a subject noun they pass cleanly:
 
 ```typescript
-aigen.process_csv_rows(data)    // ✅ allowed
-aigen.parse_iso_date(str)       // ✅ allowed — subject noun "iso_date" is specific
-aigen.filter_inactive_users(users) // ✅ allowed
+aigen.process_csv_rows(data)    // ✅ clean
+aigen.parse_iso_date(str)       // ✅ clean
+aigen.filter_inactive_users(users) // ✅ clean
 ```
