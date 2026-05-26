@@ -44,7 +44,7 @@ Run `npm run build`. The first build generates and compiles all functions.
 
 | Package | Description |
 |---|---|
-| `@aigen/core` | Scanner, context collector, cache, prompt builder, ambiguity/conflict checks, repair loop, pipeline orchestrator |
+| `@aigen/core` | Scanner, context collector, cache, prompt builder, repair loop, pipeline orchestrator |
 | `@aigen/runtime` | Runtime re-export of generated functions (`import { aigen } from "@aigen/runtime"`) |
 | `@aigen/vite` | Vite plugin |
 | `@aigen/esbuild` | esbuild plugin |

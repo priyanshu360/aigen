@@ -48,12 +48,7 @@ const lines  = aigen.read_lines_from_string(content)
 
 Before build-time generation, the import resolves to an empty module — calling `aigen.*` will throw a runtime error since no exports exist.
 
-After generation, `@aigen/runtime` re-exports all implementations from `agent.generated.ts`:
-
-```typescript
-// @aigen/runtime/src/index.ts
-export * as aigen from "./aigen.generated"
-```
+After generation, the build plugin resolves `@aigen/runtime` to the generated file, so `import { aigen }` transparently gets the implementations.
 
 ---
 
@@ -126,25 +121,23 @@ aigen.parse_csv_rows(csvText)
 aigen.truncate_string_to_words(text, limit)
 ```
 
-### Discouraged — Ambiguous names
 ---
 
-## 7. Signature Conflict Detection
+## 7. Multi-Signature Merging
 
-If the same function name is called in multiple places with **different argument shapes**, Aigen emits a blocking error rather than guessing:
+If the same function name is called with **different argument patterns** across multiple call sites, Aigen merges them into a single function using **union types**:
 
 ```
-[AgentGen] ERROR: Conflicting signatures detected for 'extract_emails_from_text':
-
-  src/mailer.ts:12  — (body: string)
-  src/parser.ts:34  — (body: string, limit: number)
-
-Resolve the conflict by:
-  1. Using the same signature in all call sites, or
-  2. Renaming one call to a different function (e.g. extract_first_n_emails_from_text)
+[AgentGen] 'extract_emails_from_text' called with 2 arg patterns: (body: string), (body: string, limit: number)
 ```
 
-Conflict detection uses the type checker from `ts-morph` to infer argument types at each call site.
+The LLM receives all variant patterns and generates a single function signature that handles both:
+
+```typescript
+export function extract_emails_from_text(body: string, limit?: number): string[] { ... }
+```
+
+This avoids blocking the build — the pipeline groups contexts, picks the richest variant, and passes all patterns as `argVariants` to the prompt.
 
 ---
 
@@ -269,9 +262,7 @@ src/**/*.ts
       ↓
 AST scan (ts-morph) — discover aigen.* calls
       ↓
-Signature conflict check (blocking)
-      ↓
-Context collection (args, nearby code, imports, hint)
+Context collection (args, nearby code, imports, hint, enclosing function)
       ↓
 Cache lookup — SHA-256(function_name + arg_types + hint)
       ↓  [cache miss]
@@ -307,14 +298,9 @@ aigen-agent/              ← separate repo — agent YAML, SOUL, RULES, skills
 
 ### `@aigen/runtime`
 
-```typescript
-// @aigen/runtime/src/index.ts
-export * as aigen from "./aigen.generated"
-```
+The runtime package is a lightweight namespace for generated functions. At build time, the plugin resolves `@aigen/runtime` imports to the generated file, so `import { aigen }` transparently gets the implementations. No proxy or runtime overhead.
 
-Before generation, `aigen.generated` doesn't exist — TypeScript compilation will error if `aigen.*` is used without first running the build. This is intentional: the build plugin runs before compilation and generates the file.
-
-After the build, all generated functions are available as `aigen.functionName(...)`.
+Before generation, the resolved namespace is empty — calling `aigen.*` before the first build will throw. This is intentional: the build plugin runs before compilation and generates the file.
 
 ---
 
@@ -355,7 +341,7 @@ The `GitAgentProvider` class wraps the `query()` function from `@open-gitagent/g
 1. Builds a prompt via `buildPrompt()` from the context
 2. Calls `query({ prompt, dir: agentDir, model })`
 3. Extracts the code block from the agent response (` ```typescript ... ``` `)
-4. Falls back to raw `export function` extraction if no markdown code block is found
+4. Falls back to brace-balanced extraction for plain `export function` responses
 5. Returns `null` on agent error (pipeline exits)
 
 For repairs, it constructs a prompt with the failed implementation and compiler error, and calls the same agent workflow.
@@ -364,11 +350,13 @@ For repairs, it constructs a prompt with the failed implementation and compiler 
 
 ## 14. Error Handling
 
-### Signature Conflict (Blocking)
+### Function Already Exists (Non-blocking)
 
 ```
-[AgentGen] ERROR: Conflicting signatures for 'fn_name' across call sites.
+[AgentGen] Skipping 'extract_emails_from_text' — already exists at src/agent.generated.ts:12
 ```
+
+Existing functions are preserved verbatim. Delete the function from the file and rebuild to regenerate.
 
 ### Generation Failure (Blocking)
 
@@ -384,11 +372,11 @@ Review the function name and hint, then re-run the build.
 [AgentGen] The `agentDir` option is required. Point it to your aigen-agent repo.
 ```
 
-### Ambiguous Name (Warning — non-blocking)
+### TypeScript Compiler Timeout (Blocking)
 
 ```
-[AgentGen] WARNING: Function name 'process' is too ambiguous.
-  Proceeding with generation anyway.
+[AgentGen] ERROR: Could not generate 'fn_name' after 3 attempts.
+Last compiler error: TypeScript compiler timed out.
 ```
 
 All blocking errors exit with non-zero. No partial file is written.
@@ -453,9 +441,9 @@ The config file is loaded at runtime via dynamic `import()`. If absent, all defa
 | Commit strategy | Always commit generated file | Deterministic builds, code review, CI safety |
 | Function ownership | Preserve existing by default; delete to regenerate | Simple predictable behavior, no annotation needed |
 | Model selection | Configurable via plugin options + config file | GitAgent abstraction handles provider swap |
-| Signature conflicts | Build error — developer must resolve | Guessing the "right" signature silently would produce wrong code |
+| Multi-signature handling | Merge with union types via `argVariants` in prompt | Non-blocking — LLM generates one function for all patterns |
 | Caching | SHA-256 hash of name + arg types + hint | Avoids redundant LLM calls; `noCache` escape hatch |
-| Runtime | Re-export from generated file (no Proxy) | Simpler, no Proxy overhead, TypeScript sees real types |
+| Runtime | Build plugin resolves `@aigen/runtime` to generated file | No Proxy overhead, TypeScript sees real types |
 | Package organization | Monolithic `@aigen/core` + thin plugin packages | Fewer packages to publish and manage |
 | CLI | No CLI package — Vite/esbuild plugins instead | Natural integration with existing build pipelines |
 | CI behaviour | No special CI mode — committed file is always used | Simpler, no env-based branching |
