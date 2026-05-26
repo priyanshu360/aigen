@@ -1,7 +1,7 @@
 {
   "name": "@aigen/esbuild",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": { "access": "public" },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@aigen/core": "workspace:*"
+    "@aigen/core": "^0.1.0"
   },
   "peerDependencies": {
     "esbuild": "^0.24.0"

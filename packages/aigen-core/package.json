@@ -1,7 +1,7 @@
 {
   "name": "@aigen/core",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": { "access": "public" },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,7 +22,7 @@
     "typescript": "^5.6.0"
   },
   "devDependencies": {
-    "@aigen/runtime": "workspace:*",
+    "@aigen/runtime": "^0.1.0",
     "@types/node": "^22.0.0",
     "tsup": "^8.3.0",
     "vitest": "^2.1.0"
