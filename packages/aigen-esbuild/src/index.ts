@@ -5,6 +5,9 @@ import {
   GitAgentProvider,
   type AigenPluginOptions,
 } from "@aigen/core"
+import { resolve } from "node:path"
+
+const DEFAULT_GENERATED_FILE = "src/agent.generated.ts"
 
 export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
   if (!options.agentDir) {
@@ -18,16 +21,24 @@ export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
     model: options.model,
   })
 
+  const root = process.cwd()
+  const generatedFile = options.generatedFile || DEFAULT_GENERATED_FILE
+  const generatedFilePath = resolve(root, generatedFile)
+
   return {
     name: "@aigen/esbuild",
 
     async setup(build) {
-      const root = build.initialOptions.absWorkingDir ?? process.cwd()
+      const buildRoot = build.initialOptions.absWorkingDir ?? root
       const agentConfig = await resolveConfig(options)
 
-      build.onStart(async () => {
-        const sources = await collectSourceFiles(root)
+      build.initialOptions.alias = {
+        "@aigen/runtime": generatedFilePath,
+        ...build.initialOptions.alias,
+      }
 
+      build.onStart(async () => {
+        const sources = await collectSourceFiles(buildRoot)
         await runPipeline(agentConfig, sources, provider, root, options.noCache)
       })
     },

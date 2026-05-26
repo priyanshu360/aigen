@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url"
 import type { AgentConfig, AigenPluginOptions } from "./types"
 
 const DEFAULT_CONFIG: AgentConfig = {
-  model: "anthropic/claude-sonnet-4",
+  model: "anthropic:claude-sonnet-4-5-20250929",
   maxRepairAttempts: 3,
   cache: true,
   generatedFile: "src/agent.generated.ts",
@@ -28,6 +28,7 @@ export async function resolveConfig(options?: AigenPluginOptions): Promise<Agent
     }
   }
 
+  if (options?.generatedFile) config.generatedFile = options.generatedFile
   if (options?.noCache !== undefined) config.cache = !options.noCache
 
   return config

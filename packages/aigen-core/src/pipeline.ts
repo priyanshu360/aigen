@@ -116,11 +116,12 @@ export async function runPipeline(
   for (const [name, { code }] of existingFunctions) {
     if (!seen.has(name)) {
       generatedFunctions.push(code)
+      seen.add(name)
     }
   }
 
-  writeGeneratedFile(rootDir, config.generatedFile, generatedFunctions)
-  console.log(`${NAMESPACE} Generated ${generatedFunctions.length} function(s) in ${config.generatedFile}`)
+  writeGeneratedFile(rootDir, config.generatedFile, generatedFunctions, seen)
+  console.log(`${NAMESPACE} Generated ${generatedFunctions.length} function(s) in ${config.generatedFile} + aigen namespace`)
 }
 
 function resolvePathSafe(rootDir: string, relativePath: string): string {
@@ -152,9 +153,16 @@ function readGeneratedFunctions(
 
   for (let i = 0; i < funcStarts.length; i++) {
     const start = funcStarts[i].index
-    const end = i + 1 < funcStarts.length
+    let end = i + 1 < funcStarts.length
       ? funcStarts[i + 1].index
       : text.length
+
+    // Stop before the namespace export if it's in this range
+    const nsIndex = text.indexOf("\nexport const aigen =", start)
+    if (nsIndex !== -1 && nsIndex < end) {
+      end = nsIndex
+    }
+
     const line = text.slice(0, start).split("\n").length
     existing.set(funcStarts[i].name, { code: text.slice(start, end).trim(), line })
   }
@@ -195,13 +203,16 @@ function collectArgPatterns(group: FunctionContext[]): Argument[][] {
 function writeGeneratedFile(
   rootDir: string,
   relativePath: string,
-  functions: string[]
+  functions: string[],
+  functionNames: Set<string>
 ): void {
   const fullPath = resolvePathSafe(rootDir, relativePath)
   const header = `// AUTO GENERATED — do not edit by hand\n` +
     `// Delete a function and re-run the build to regenerate it.\n\n`
 
-  const content = header + functions.join("\n\n") + "\n"
+  const names = [...functionNames].sort()
+  const nsExport = `\nexport const aigen = { ${names.join(", ")} }\n`
+  const content = header + functions.join("\n\n") + nsExport
 
   const dir = fullPath.substring(0, fullPath.lastIndexOf("/"))
   if (!existsSync(dir)) {

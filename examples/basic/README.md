@@ -1,30 +1,31 @@
 # @aigen/example-basic
 
-Minimal example showing how to use the Aigen Vite plugin.
+Demonstrates multi-file usage — `aigen.computeArea()` is called from three shape modules with different argument signatures, and the pipeline generates a single merged function.
 
-## Prerequisites
-
-You need the **aigen-agent** repository cloned alongside this monorepo:
-
-```bash
-git clone <aigen-agent-url> ../aigen-agent
+```
+src/
+  main.ts          -- entry point, imports shape modules
+  shapes/
+    circle.ts      -- calls aigen.computeArea("circle", radius)
+    rect.ts        -- calls aigen.computeArea("rect", width, height)
+    triangle.ts    -- calls aigen.computeArea("triangle", base, height, { hint: ... })
 ```
 
 ## Usage
 
 ```bash
-pnpm install
 pnpm build
 ```
 
 On build, Vite will:
-1. Scan `src/` for `aigen.*(...)` calls
-2. Generate implementations using the LLM agent
-3. Write them to `src/agent.generated.ts`
-4. Compile everything together
+1. Scan `src/` for `aigen.*(...)` calls across all files
+2. Merge same-named calls (e.g., all `computeArea` calls become one function)
+3. Generate implementations via LLM
+4. Write `src/agent.generated.ts`
+5. Compile everything together
 
 ## Customization
 
-- Add a **hint** by passing a string as the last argument: `aigen.sayHello("world", "return a friendly greeting")`
-- **Skip** an existing function by leaving it in `src/agent.generated.ts` — Aigen skips with a message about file and line. Delete it and rebuild to regenerate.
-- Set `noCache: true` in the plugin options to force regeneration
+- **Hint**: `aigen.fn(arg, { hint: "..." })` — last arg as object with `hint` key
+- **Skip**: leave an existing function in `agent.generated.ts` to skip regeneration
+- **Cache**: set `noCache: true` in plugin opts to force regeneration

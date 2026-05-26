@@ -95,11 +95,12 @@ function checkTypeScript(code: string): string | true {
 
     try {
       execSync(
-        `"${tscPath}" --project tsconfig.json test.ts`,
+        `"${tscPath}" --project tsconfig.json`,
         {
           cwd: dir,
           stdio: ["ignore", "pipe", "pipe"],
           timeout: 10000,
+          encoding: "utf-8",
         }
       )
       return true
@@ -107,16 +108,19 @@ function checkTypeScript(code: string): string | true {
       if (e && typeof e === "object" && "signal" in e && (e as any).signal === "SIGTERM") {
         return "TypeScript compiler timed out"
       }
-      if (e && typeof e === "object" && "stderr" in e) {
-        const stderr = (e as { stderr: Buffer }).stderr.toString()
-        const errors = stderr
+      const err = e as { stderr?: Buffer | string; stdout?: Buffer | string; message?: string }
+      const stderr = typeof err.stderr === "string" ? err.stderr : err.stderr?.toString() ?? ""
+      const stdout = typeof err.stdout === "string" ? err.stdout : err.stdout?.toString() ?? ""
+      const output = stderr || stdout
+      if (output) {
+        const errors = output
           .split("\n")
           .filter((l) => l.includes("error TS") || l.includes("error:"))
           .join("\n")
           .trim()
-        return errors || stderr.trim() || "Unknown compilation error"
+        return errors || output.trim() || "Unknown compilation error"
       }
-      const msg = e instanceof Error ? e.message : String(e)
+      const msg = err.message || String(e)
       return msg || "Unknown compilation error"
     }
   } finally {

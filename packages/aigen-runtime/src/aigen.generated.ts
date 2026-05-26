@@ -1,4 +1,4 @@
-// This file is overwritten by the @aigen build plugin.
-// After running the build, all generated utility functions
-// will be exported here and accessible via the `aigen` namespace.
-export {}
+// Build plugins (Vite/esbuild) alias `@aigen/runtime` to the generated file in the user's project.
+// This stub provides a value-type fallback so TypeScript sees `aigen` as a const, not a namespace.
+// At build time, the plugin resolves `import { aigen } from "@aigen/runtime"` to the real generated file.
+export const aigen: Record<string, (...args: any[]) => any> = {} as any

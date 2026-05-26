@@ -1,7 +1,4 @@
-// Manual integration test
-// Verifies the full pipeline: scan → context → ambiguity → conflict → cache → repair → write
-// Uses an inline provider so no LLM/agent repo needed.
-//
+// Manual integration test — verifies multi-file scan with same function name
 // Run: npx tsx test.ts
 
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs"
@@ -12,7 +9,15 @@ import type { GenerationProvider, FunctionContext, AgentConfig } from "@aigen/co
 
 class TestProvider implements GenerationProvider {
   async generateFunction(_name: string, _ctx: FunctionContext) {
-    return { code: `export function greet_user(name: string): string { return "hello " + name }` }
+    const code = `export function computeArea(shape: string, ...dims: number[]): number {
+  switch (shape) {
+    case "circle": return Math.PI * dims[0] * dims[0]
+    case "rect": return dims[0] * dims[1]
+    case "triangle": return 0.5 * dims[0] * dims[1]
+    default: return 0
+  }
+}`
+    return { code }
   }
   async repairFunction(_name: string, impl: string, _err: string, _attempt: number) {
     return { code: impl }
@@ -22,9 +27,18 @@ class TestProvider implements GenerationProvider {
 const tmp = mkdtempSync(join(tmpdir(), "aigen-test-"))
 console.log("Test dir:", tmp)
 
+// Create multi-file source with same function name across files
 writeFileSync(
-  join(tmp, "greet.ts"),
-  `import { aigen } from "@aigen/runtime"\nexport function hello() {\n  return aigen.greet_user("world")\n}\n`,
+  join(tmp, "circle.ts"),
+  `import { aigen } from "@aigen/runtime"\nexport function area(r: number) { return aigen.computeArea("circle", r) }\n`,
+)
+writeFileSync(
+  join(tmp, "rect.ts"),
+  `import { aigen } from "@aigen/runtime"\nexport function area(w: number, h: number) { return aigen.computeArea("rect", w, h) }\n`,
+)
+writeFileSync(
+  join(tmp, "triangle.ts"),
+  `import { aigen } from "@aigen/runtime"\nexport function area(b: number, h: number) { return aigen.computeArea("triangle", b, h, { hint: "half base times height" }) }\n`,
 )
 
 const config: AgentConfig = {
@@ -34,7 +48,11 @@ const config: AgentConfig = {
 }
 
 try {
-  await runPipeline(config, [join(tmp, "greet.ts")], new TestProvider(), tmp, true)
+  await runPipeline(config, [
+    join(tmp, "circle.ts"),
+    join(tmp, "rect.ts"),
+    join(tmp, "triangle.ts"),
+  ], new TestProvider(), tmp, true)
 } catch (err) {
   console.log("FAIL: pipeline threw:", err instanceof Error ? err.message : err)
   process.exit(1)
@@ -47,14 +65,24 @@ if (!existsSync(genFile)) {
 }
 
 const content = readFileSync(genFile, "utf-8")
-if (!content.includes("export function greet_user")) {
-  console.log("FAIL: greet function not found in output\n" + content)
+if (!content.includes("export function computeArea")) {
+  console.log("FAIL: computeArea not found in output\n" + content)
   process.exit(1)
 }
 
-// Pipeline's repair step already validated the code compiles via tsc.
-// Here we just verify the output file exists and has correct structure.
-console.log("PASS: pipeline completed, generated file contains greet_user function")
+if (!content.includes("export const aigen = { computeArea }")) {
+  console.log("FAIL: aigen namespace not found in output\n" + content)
+  process.exit(1)
+}
+
+// Should only have one computeArea function (same name merged)
+const funcMatches = content.match(/export function computeArea/g)
+if (funcMatches && funcMatches.length > 1) {
+  console.log("FAIL: duplicate computeArea functions\n" + content)
+  process.exit(1)
+}
+
+console.log("PASS: multi-file pipeline with same function name merged correctly")
 console.log("---")
 console.log(content)
 console.log("---")

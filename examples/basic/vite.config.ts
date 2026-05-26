@@ -4,7 +4,7 @@ import { aigenPlugin } from "@aigen/vite"
 export default defineConfig({
   plugins: [
     aigenPlugin({
-      agentDir: "../aigen-agent",
+      agentDir: "../../../aigen-agent",
       // model: "anthropic/claude-sonnet-4",
     }),
   ],

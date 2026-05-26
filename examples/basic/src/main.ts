@@ -1,6 +1,7 @@
-import { aigen } from "@aigen/runtime"
+import { circleArea } from "./shapes/circle"
+import { rectArea } from "./shapes/rect"
+import { triangleArea } from "./shapes/triangle"
 
-// aigen will generate this function at build time.
-// Try modifying the arguments or adding a hint string to steer generation.
-const result = aigen.sayHello("world")
-console.log(result)
+console.log("Circle radius 5:", circleArea(5))
+console.log("Rect 10x20:", rectArea(10, 20))
+console.log("Triangle 6x8:", triangleArea(6, 8))

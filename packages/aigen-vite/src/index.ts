@@ -5,6 +5,9 @@ import {
   GitAgentProvider,
   type AigenPluginOptions,
 } from "@aigen/core"
+import { resolve } from "node:path"
+
+const DEFAULT_GENERATED_FILE = "src/agent.generated.ts"
 
 export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
   if (!options.agentDir) {
@@ -18,8 +21,22 @@ export function aigenPlugin(options: AigenPluginOptions = {}): Plugin {
     model: options.model,
   })
 
+  // Compute the generated file path at plugin creation so the alias is available
+  // before any build lifecycle hook runs.
+  const root = process.cwd()
+  const generatedFile = options.generatedFile || DEFAULT_GENERATED_FILE
+  const generatedFilePath = resolve(root, generatedFile)
+
   return {
     name: "@aigen/vite",
+
+    config(cfg) {
+      cfg.resolve = cfg.resolve || {}
+      cfg.resolve.alias = [
+        { find: /^@aigen\/runtime$/, replacement: generatedFilePath },
+        ...(Array.isArray(cfg.resolve.alias) ? cfg.resolve.alias : []),
+      ]
+    },
 
     async buildStart() {
       const agentConfig = await resolveConfig(options)

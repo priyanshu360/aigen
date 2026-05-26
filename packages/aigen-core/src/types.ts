@@ -39,6 +39,7 @@ export interface AigenPluginOptions {
   noCache?: boolean
   agentDir?: string
   model?: string
+  generatedFile?: string
 }
 
 /**

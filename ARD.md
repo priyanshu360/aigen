@@ -150,7 +150,7 @@ import { aigen } from "@aigen/runtime"
 
 const emails = aigen.extract_emails_from_text(
   body,
-  "Return unique emails only"
+  { hint: "Return unique emails only" }
 )
 
 const domain = aigen.get_domain_from_email(email)
@@ -284,7 +284,7 @@ Bundle
 ```
 packages/
 ├── aigen-core/           ← scanner, context, cache, prompt,
-│                           conflict detection, repair, pipeline, config,
+│                           repair, pipeline, config,
 │                           GitAgentProvider
 ├── aigen-runtime/        ← re-exports generated functions
 ├── aigen-vite/           ← Vite plugin

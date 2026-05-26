@@ -1,1 +1,1 @@
-export * as aigen from "./aigen.generated"
+export { aigen } from "./aigen.generated"
