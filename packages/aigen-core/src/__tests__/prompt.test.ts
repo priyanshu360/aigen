@@ -8,6 +8,7 @@ function makeContext(overrides: Partial<FunctionContext> & { functionName: strin
     hint: overrides.hint,
     sourceFile: overrides.sourceFile ?? "src/test.ts",
     lineNumber: overrides.lineNumber ?? 1,
+    byteOffset: overrides.byteOffset ?? 0,
     assignmentVar: overrides.assignmentVar,
     nearbyCode: overrides.nearbyCode ?? "",
     availableImports: overrides.availableImports ?? [],
