@@ -11,6 +11,7 @@
     "@aigen/runtime": "workspace:*"
   },
   "devDependencies": {
+    "@aigen/core": "workspace:*",
     "@aigen/vite": "workspace:*",
     "vite": "^6"
   }

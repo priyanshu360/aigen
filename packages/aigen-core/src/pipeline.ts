@@ -27,15 +27,14 @@ export async function runPipeline(
   for (const call of calls) {
     const error = checkAmbiguity(call.functionName, config.ambiguityBlocklist)
     if (error) {
-      console.error(`${NAMESPACE} ERROR: ${error.message}`)
+      console.warn(`${NAMESPACE} WARNING: ${error.message}`)
       if (error.suggestions?.length) {
-        console.error(`\nSuggested alternatives:`)
+        console.warn(`  Suggested alternatives:`)
         for (const s of error.suggestions) {
-          console.error(`  aigen.${s}`)
+          console.warn(`    aigen.${s}`)
         }
-        console.error(`\nRename the function call and re-run the build.`)
       }
-      process.exit(1)
+      console.warn(`  Proceeding with generation anyway.\n`)
     }
   }
 

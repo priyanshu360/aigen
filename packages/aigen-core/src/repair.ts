@@ -2,7 +2,10 @@ import { execSync } from "node:child_process"
 import { writeFileSync, mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { createRequire } from "node:module"
 import type { GenerationProvider } from "./types"
+
+const _require = createRequire(import.meta.url)
 
 export interface RepairResult {
   success: boolean
@@ -65,12 +68,18 @@ function checkTypeScript(code: string): string | true {
   try {
     writeFileSync(file, code, "utf-8")
 
+    const tscPath = resolveTscPath()
+    if (!tscPath) return "TypeScript compiler not found"
+
     try {
-      execSync("npx tsc --noEmit --strict --target es2022 --module esnext test.ts", {
-        cwd: dir,
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: 10000,
-      })
+      execSync(
+        `"${tscPath}" --noEmit --strict --target es2022 --module esnext test.ts`,
+        {
+          cwd: dir,
+          stdio: ["ignore", "pipe", "pipe"],
+          timeout: 10000,
+        }
+      )
       return true
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -83,5 +92,20 @@ function checkTypeScript(code: string): string | true {
     }
   } finally {
     rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+function resolveTscPath(): string | null {
+  try {
+    const tsPkg = _require.resolve("typescript")
+    return join(tsPkg, "../../bin/tsc")
+  } catch {
+    const fromCwd = join(process.cwd(), "node_modules", "typescript", "bin", "tsc")
+    try {
+      _require.resolve(fromCwd)
+      return fromCwd
+    } catch {
+      return null
+    }
   }
 }

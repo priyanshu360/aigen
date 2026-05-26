@@ -14,6 +14,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/aigen-runtime
     devDependencies:
+      '@aigen/core':
+        specifier: workspace:*
+        version: link:../../packages/aigen-core
       '@aigen/vite':
         specifier: workspace:*
         version: link:../../packages/aigen-vite
