@@ -11,6 +11,10 @@ const DEFAULT_CONFIG: AgentConfig = {
   ambiguityBlocklist: [],
 }
 
+/**
+ * Resolve AgentConfig from plugin options and optional aigen.config.ts file.
+ * Falls back to defaults for any unset values.
+ */
 export async function resolveConfig(options?: AigenPluginOptions): Promise<AgentConfig> {
   let config: AgentConfig = { ...DEFAULT_CONFIG }
 
@@ -30,6 +34,15 @@ export async function resolveConfig(options?: AigenPluginOptions): Promise<Agent
   return config
 }
 
+/**
+ * Helper to define an AgentConfig with type safety.
+ * Use in aigen.config.ts:
+ * @example
+ * export default defineConfig({
+ *   model: "anthropic/claude-sonnet-4",
+ *   cache: true,
+ * })
+ */
 export function defineConfig(config: Partial<AgentConfig>): AgentConfig {
   return { ...DEFAULT_CONFIG, ...config }
 }

@@ -16,6 +16,11 @@ export interface CallSite {
 export interface FunctionContext extends CallSite {
   nearbyCode: string
   availableImports: string[]
+  parentFunction?: {
+    name: string
+    signature?: string
+    jsDoc?: string
+  }
 }
 
 export interface AgentConfig {
@@ -33,6 +38,10 @@ export interface AigenPluginOptions {
   model?: string
 }
 
+/**
+ * Interface for LLM providers.
+ * Implement this to plug in a custom generation backend (e.g. GitAgent, OpenAI, mock for tests).
+ */
 export interface GenerationProvider {
   generateFunction(
     functionName: string,

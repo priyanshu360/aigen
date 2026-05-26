@@ -11,6 +11,17 @@ import type { AgentConfig, GenerationProvider } from "./types"
 const NAMESPACE = "[AgentGen]"
 const LOCK_MARKER = "@aigen-lock"
 
+/**
+ * Main pipeline orchestrator.
+ * Scans source files for aigen.*() calls, generates implementations via the provider,
+ * validates with tsc, repairs failures, and writes src/agent.generated.ts.
+ *
+ * @param config - AgentConfig with settings (repair attempts, cache, output path, etc.)
+ * @param sources - File paths to scan (e.g. ["src/main.ts"])
+ * @param provider - LLM provider implementing generateFunction + repairFunction
+ * @param rootDir - Project root for output path and .aigen/cache.json
+ * @param noCacheOverride - Skip cache even if config.cache is true
+ */
 export async function runPipeline(
   config: AgentConfig,
   sources: string[],

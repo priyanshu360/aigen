@@ -3,10 +3,17 @@ import { buildPrompt } from "./prompt"
 import type { FunctionContext, GenerationProvider } from "./types"
 
 export interface GitAgentProviderOptions {
+  /** Path to the aigen-agent repository (agent.yaml, SOUL.md, skills/) */
   agentDir: string
+
+  /** LLM model override (default: anthropic/claude-sonnet-4-5-20250929) */
   model?: string
 }
 
+/**
+ * LLM provider that calls @open-gitagent/gitagent's query() with the agent repo.
+ * This is the default provider used by the Vite/esbuild plugins.
+ */
 export class GitAgentProvider implements GenerationProvider {
   private options: GitAgentProviderOptions
 

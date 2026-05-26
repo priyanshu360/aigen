@@ -1,5 +1,8 @@
 import type { FunctionContext } from "./types"
 
+/**
+ * Build a structured prompt for the LLM from call-site context.
+ */
 export function buildPrompt(context: FunctionContext): string {
   const sections: string[] = []
 
@@ -21,6 +24,13 @@ export function buildPrompt(context: FunctionContext): string {
 
   if (context.assignmentVar) {
     sections.push(`Return type (inferred from usage): the result is assigned to '${context.assignmentVar}'`)
+  }
+
+  if (context.parentFunction) {
+    sections.push(`\nParent function: ${context.parentFunction.signature ?? context.parentFunction.name}`)
+    if (context.parentFunction.jsDoc) {
+      sections.push(`Documentation:\n${context.parentFunction.jsDoc}`)
+    }
   }
 
   if (context.hint) {
